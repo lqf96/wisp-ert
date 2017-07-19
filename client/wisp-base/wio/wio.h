@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 
 //Simple exception handling marco
@@ -51,6 +52,8 @@ const wio_status_t WIO_OK = 0x00;
 const wio_status_t WIO_ERR_OUT_OF_RANGE = 0x01;
 //No memory
 const wio_status_t WIO_ERR_NO_MEMORY = 0x02;
+//Already in use
+const wio_status_t WIO_ERR_ALREADY = 0x03;
 
 //Current time
 extern uint16_t current_time;
@@ -150,6 +153,18 @@ extern wio_status_t wio_set_timeout(
 );
 
 /**
+ * Wait for timeout.
+ *
+ * @param timer Timer instance
+ * @param time Time
+ * @return Operation status
+ */
+extern wio_status_t wio_wait4_timeout(
+    wio_timer_t* timer,
+    uint16_t time
+);
+
+/**
  * Clear timeout on timer.
  *
  * @param timer Timer instance
@@ -159,15 +174,6 @@ extern wio_status_t wio_clear_timeout(
 );
 
 /**
- * A no-op callback.
- *
- * @param data Callback closure data
- * @param status WIO operation status
- * @param value Parameter value
- * @return Operation status
+ * Timer interrupt callback.
  */
-extern wio_status_t wio_no_op(
-    void* data,
-    wio_status_t status,
-    void* value
-);
+extern void wio_timer_callback();

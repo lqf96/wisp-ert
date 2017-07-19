@@ -1,0 +1,4 @@
+ERT_DECL_FUNC(open)
+ERT_DECL_FUNC(close)
+ERT_DECL_FUNC(read)
+ERT_DECL_FUNC(write)

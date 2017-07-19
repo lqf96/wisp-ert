@@ -3,7 +3,7 @@
  *
  * An interface to low-level hardware and software timing and alarm/scheduling features
  *
- * @author Aaron Park
+ * @author Aaron Parks
  */
 
 #ifndef TIMER_H_

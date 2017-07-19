@@ -38,5 +38,7 @@ encoding//build/rand/subdir_vars.mk=UTF-8
 encoding//build/sources.mk=UTF-8
 encoding//build/subdir_rules.mk=UTF-8
 encoding//build/subdir_vars.mk=UTF-8
+encoding//build/wio/subdir_rules.mk=UTF-8
+encoding//build/wio/subdir_vars.mk=UTF-8
 encoding//build/wired/subdir_rules.mk=UTF-8
 encoding//build/wired/subdir_vars.mk=UTF-8
