@@ -8,7 +8,7 @@ RFID_MB_EPC = 0x01
 # User memory bank
 RFID_MB_USER = 0x03
 
-def read_opspec(data_size, opspec_id):
+def read_opspec(data_size, opspec_id=0):
     """
     Create a LLRP Read OpSpec.
 
@@ -23,6 +23,8 @@ def read_opspec(data_size, opspec_id):
     # Read OpSpec
     return {
         "OpSpecID": opspec_id,
+        # ?
+        "M": 1,
         # Memory bank
         "MB": RFID_MB_USER,
         # Read position
@@ -33,7 +35,7 @@ def read_opspec(data_size, opspec_id):
         "WordCount": n_words
     }
 
-def write_opspec(data, opspec_id):
+def write_opspec(data, opspec_id=0):
     """
     Create a LLRP Write or BlockWrite OpSpec.
 
@@ -48,6 +50,8 @@ def write_opspec(data, opspec_id):
     # BlockWrite OpSpec
     return {
         "OpSpecID": opspec_id,
+        # ?
+        "M": 1,
         # Memory bank
         "MB": RFID_MB_USER,
         # Write position

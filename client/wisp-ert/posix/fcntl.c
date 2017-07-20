@@ -1,4 +1,5 @@
 #include <stdarg.h>
+#include <sys/types.h>
 #include "runtime/runtime.h"
 
 /**
@@ -21,7 +22,7 @@ extern int open(const char* path, int flags, ...) {
         rpc_ep,
         ERT_HANDLE(open),
         URPC_SIG(3, URPC_TYPE_VARY, URPC_TYPE_I16, URPC_TYPE_U16),
-        NULL,
+        URPC_ARG(URPC_VARY(strlen(path), path), &flags, &mode),
         NULL,
         ert_resume_exec
     );

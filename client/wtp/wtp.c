@@ -268,8 +268,12 @@ extern wtp_status_t wtp_close(
 extern wtp_status_t wtp_send(
     wtp_t* self,
     void* data,
-    size_t size
+    size_t size,
+    void* cb_data,
+    wio_callback_t cb
 ) {
+    //TODO: Wtf here
+
     return WIO_OK;
 }
 
@@ -278,7 +282,9 @@ extern wtp_status_t wtp_send(
  */
 extern wtp_status_t wtp_recv(
     wtp_t* self,
-    size_t size
+    size_t size,
+    void* cb_data,
+    wio_callback_t cb
 ) {
     return WIO_OK;
 }

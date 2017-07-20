@@ -156,7 +156,9 @@ extern wtp_status_t wtp_close(
 extern wtp_status_t wtp_send(
     wtp_t* self,
     uint8_t* data,
-    size_t size
+    size_t size,
+    void* cb_data,
+    wio_callback_t cb
 );
 
 /**
@@ -164,7 +166,9 @@ extern wtp_status_t wtp_send(
  */
 extern wtp_status_t wtp_recv(
     wtp_t* self,
-    size_t size
+    size_t size,
+    void* cb_data,
+    wio_callback_t cb
 );
 
 /**

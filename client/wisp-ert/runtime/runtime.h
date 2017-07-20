@@ -1,9 +1,21 @@
 #pragma once
 
 #include "wio.h"
+#include "wtp.h"
+#include "urpc.h"
 
 //ERT status type
 typedef wio_status_t ert_status_t;
+
+//ERT machine context type
+typedef struct ert_mcontext {
+
+} ert_mcontext_t;
+
+//WTP endpoint
+extern wtp_t* ert_wtp_ep;
+//u-RPC endpoint
+extern urpc_t* ert_rpc_ep;
 
 /**
  * ERT user code entry point.

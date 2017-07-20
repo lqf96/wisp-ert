@@ -8,7 +8,7 @@ setup(
     author="lqf96",
     author_email="lqf.1996121@gmail.com",
     description="WISP Transmission Protocol (Server-side)",
-    license="MIT",
+    license="GPL",
     packages=["wtp"],
     install_requires=["six", "twisted", "sllurp"]
 )

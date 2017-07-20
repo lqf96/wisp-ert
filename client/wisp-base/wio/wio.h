@@ -10,6 +10,9 @@
         if (status) \
             return status; \
     }
+//Callback declaration helper
+#define WIO_CALLBACK(name) \
+    name(void* data, wio_status_t status, void* result)
 
 //WIO status type
 typedef uint8_t wio_status_t;

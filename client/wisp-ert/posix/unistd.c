@@ -9,7 +9,7 @@ int close(int fd) {
         rpc_ep,
         ERT_HANDLE_CLOSE,
         URPC_SIG(1, URPC_TYPE_I16),
-        NULL,
+        URPC_ARG(&fd),
         NULL,
         ert_resume_exec
     );
@@ -29,7 +29,7 @@ ssize_t read(int fd, void* buf, size_t size) {
         rpc_ep,
         ERT_HANDLE_READ,
         URPC_SIG(2, URPC_TYPE_I16, URPC_TYPE_U16),
-        NULL,
+        URPC_ARG(&fd, &size),
         NULL,
         ert_resume_exec
     );
@@ -49,7 +49,7 @@ extern ssize_t write(int fd, void* buf, size_t size) {
         rpc_ep,
         ERT_HANDLE_WRITE,
         URPC_SIG(2, URPC_TYPE_I16, URPC_TYPE_VARY),
-        NULL,
+        URPC_ARG(&fd, URPC_VARY(size, buf)),
         NULL,
         ert_resume_exec
     );
