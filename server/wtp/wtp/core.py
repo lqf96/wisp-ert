@@ -1,4 +1,5 @@
 from __future__ import absolute_import, unicode_literals
+from twisted.internet.deferred import deferLater
 
 import wtp.constants as consts
 from wtp.util import EventTarget, ChecksumStream, xor_checksum, read_stream, write_stream
@@ -110,4 +111,4 @@ class WTPServer(EventTarget):
         if len(opspecs)>1:
             return
         # TODO: AccessSpec callback
-        self._llrp_factory.nextAccess
+        self._llrp_factory.nextAccess()

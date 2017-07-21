@@ -13,7 +13,7 @@
     }
 //Callback declaration helper
 #define WIO_CALLBACK(name) \
-    name(void* data, wio_status_t status, void* result)
+    wio_status_t name(void* data, wio_status_t status, void* result)
 
 //WIO status type
 typedef uint8_t wio_status_t;
@@ -21,10 +21,17 @@ typedef uint8_t wio_status_t;
 typedef wio_status_t (*wio_callback_t)(void*, wio_status_t, void*);
 
 //No error
-const wio_status_t WIO_OK = 0x00;
+static const wio_status_t WIO_OK = 0x00;
 //Out of range
-const wio_status_t WIO_ERR_OUT_OF_RANGE = 0x01;
+static const wio_status_t WIO_ERR_OUT_OF_RANGE = 0x01;
 //No memory
-const wio_status_t WIO_ERR_NO_MEMORY = 0x02;
+static const wio_status_t WIO_ERR_NO_MEMORY = 0x02;
 //Already in use
-const wio_status_t WIO_ERR_ALREADY = 0x03;
+static const wio_status_t WIO_ERR_ALREADY = 0x03;
+
+/**
+ * Initialize WIO library
+ *
+ * @return WIO_OK
+ */
+extern wio_status_t wio_init();

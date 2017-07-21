@@ -12,13 +12,15 @@ typedef struct wio_timer {
     wio_callback_t cb;
 
     //Trigger time
-    uint16_t _time;
+    uint32_t _time;
     //Previous timer
     struct wio_timer* _prev;
     //Next timer
     struct wio_timer* _next;
 } wio_timer_t;
 
+//Current time (In microseconds)
+extern uint32_t current_time;
 //System timer (Used for polyfilling WISP firmware functions)
 extern wio_timer_t system_timer;
 

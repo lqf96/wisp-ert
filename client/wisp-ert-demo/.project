@@ -3,7 +3,7 @@
 	<name>wisp-ert-demo</name>
 	<comment></comment>
 	<projects>
-		<project>wisp-ert</project>
+		<project>wisp-base</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>

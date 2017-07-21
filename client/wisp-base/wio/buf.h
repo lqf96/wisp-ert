@@ -16,7 +16,7 @@ typedef struct wio_buf {
 } wio_buf_t;
 
 //Current time
-extern uint16_t current_time;
+extern uint32_t current_time;
 
 /**
  * Initialize WIO buffer.
