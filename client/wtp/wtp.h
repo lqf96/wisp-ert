@@ -3,8 +3,11 @@
 #include <stdbool.h>
 #include "wio.h"
 
-//WTP transport mode type
-typedef uint8_t wtp_mode_t;
+//Maximum event type
+#define _WTP_EVENT_MAX 0x03
+
+//WTP status type
+typedef wio_status_t wtp_status_t;
 //WTP packet type
 typedef uint8_t wtp_pkt_t;
 //WTP event type
@@ -33,9 +36,9 @@ typedef struct wtp {
     wtp_link_state_t _uplink_state;
 
     //Reliable downlink
-    bool _reliable_downlink;
+    bool _downlink_reliable;
     //Reliable uplink
-    bool _reliable_uplink;
+    bool _uplink_reliable;
 
     //Sliding window size
     uint16_t _sliding_window;
@@ -69,28 +72,24 @@ typedef struct wtp {
     //Timer instance
     wio_timer_t _timer;
 
-    //Event callbacks
-    wio_callback_t _event_cb[WTP_EVENT_MAX];
+    //Event callback
+    wio_callback_t _event_cb[_WTP_EVENT_MAX];
     //Callback closure data
-    void* _event_cb_data[WTP_EVENT_MAX];
+    void* _event_cb_data[_WTP_EVENT_MAX];
 } wtp_t;
 
+//Not acknowledged
+const wtp_status_t WTP_ERR_NOT_ACKED = 0x10;
 //Required action already done
-const wtp_status_t WTP_ERR_ALREADY = 0x10;
+const wtp_status_t WTP_ERR_ALREADY = 0x11;
 //Connection is busy
-const wtp_status_t WTP_ERR_BUSY = 0x11;
+const wtp_status_t WTP_ERR_BUSY = 0x12;
 //Invalid parameter
-const wtp_status_t WTP_ERR_INVALID_PARAM = 0x12;
-
-//Unreliable mode
-const wtp_mode_t WTP_MODE_UNRELIABLE = 0x00;
-//Reliable stream mode
-const wtp_mode_t WTP_MODE_STREAM = 0x01;
-//Reliable datagram mode
-const wtp_mode_t WTP_MODE_DGRAM = 0x02;
-
-//Maximum mode number
-const wtp_mode_t WTP_MODE_MAX = WTP_MODE_DGRAM;
+const wtp_status_t WTP_ERR_INVALID_PARAM = 0x13;
+//Invalid checksum
+const wtp_status_t WTP_ERR_INVALID_CHECKSUM = 0x14;
+//Unsupported operation
+const wtp_status_t WTP_ERR_UNSUPPORT_OP = 0x15;
 
 //No more packets
 const wtp_pkt_t WTP_PKT_END = 0x00;
@@ -110,21 +109,17 @@ const wtp_pkt_t WTP_PKT_REQ_UPLINK = 0x06;
 const wtp_pkt_t WTP_PKT_ERR = 0x07;
 
 //Maximum packet type number
-const wtp_pkt_t WTP_PKT_MAX = WTP_PKT_ERR;
+const wtp_pkt_t WTP_PKT_MAX = 0x08;
 
 //Connection opened
 const wtp_event_t WTP_EVENT_OPEN = 0x00;
 //Downlink closed
-const wtp_event_t WTP_EVENT_DOWNLINK_CLOSE = 0x01;
+const wtp_event_t WTP_EVENT_HALF_CLOSE = 0x01;
 //Connection closed
 const wtp_event_t WTP_EVENT_CLOSE = 0x02;
-//Data sent
-const wtp_event_t WTP_EVENT_SENT = 0x03;
-//Data received
-const wtp_event_t WTP_EVENT_RECEIVED = 0x04;
 
-//Maximum event number
-const wtp_event_t WTP_EVENT_MAX = WTP_EVENT_RECEIVED;
+//Maximum event type
+const wtp_event_t WTP_EVENT_MAX = 0x03;
 
 //Closed
 const wtp_link_state_t WTP_STATE_CLOSED = 0x00;
@@ -140,8 +135,9 @@ const wtp_link_state_t WTP_STATE_CLOSING = 0x03;
  */
 extern wtp_status_t wtp_init(
     wtp_t* self,
-    wio_buf_t* send_buf,
-    wio_buf_t* recv_buf
+    size_t send_ctrl_buf_size,
+    size_t send_data_buf_size,
+    size_t recv_msg_buf_size
 );
 
 /**
@@ -149,18 +145,14 @@ extern wtp_status_t wtp_init(
  */
 extern wtp_status_t wtp_connect(
     wtp_t* self,
-    wtp_mode_t mode,
-    void* cb_data,
-    wio_callback_t cb
+    bool uplink_reliable
 );
 
 /**
  * Disconnect from WTP server
  */
 extern wtp_status_t wtp_close(
-    wtp_t* self,
-    void* cb_data,
-    wio_callback_t cb
+    wtp_t* self
 );
 
 /**
@@ -232,4 +224,4 @@ wtp_status_t wtp_on_event(
     wtp_event_t event,
     void* cb_data,
     wio_callback_t cb
-)
+);

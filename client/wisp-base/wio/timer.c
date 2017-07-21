@@ -1,106 +1,12 @@
-#include <string.h>
 #include "../globals.h"
-#include "wio.h"
+#include "timer.h"
 
 //Begin and end of pending timer linked list
 static wio_timer_t* timer_begin = NULL;
 static wio_timer_t* timer_end = NULL;
 
 //System timer (Used for polyfilling WISP firmware functions)
-static wio_timer_t system_timer;
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_init() {
-    //Initialize system timer
-    wio_timer_init(&system_timer);
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_buf_init(
-    wio_buf_t* self,
-    uint8_t* buffer,
-    size_t size
-) {
-    //Set up buffer and size
-    self->buffer = buffer;
-    self->size = size;
-
-    //Initialize cursors
-    self->pos_a = 0;
-    self->pos_b = 0;
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_read(
-    wio_buf_t* self,
-    void* data,
-    size_t size
-) {
-    //Out of range check
-    if (self->pos_a+size>self->size)
-        return WIO_ERR_OUT_OF_RANGE;
-    //Copy data
-    memcpy(data, self->buffer+self->pos_a, size);
-    //Update cursor
-    self->pos_a += size;
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_write(
-    wio_buf_t* self,
-    void* data,
-    size_t size
-) {
-    //Out of range check
-    if (self->pos_b+size>self->size)
-        return WIO_ERR_OUT_OF_RANGE;
-    //Copy data
-    memcpy(self->buffer+self->pos_b, data, size);
-    //Update cursor
-    self->pos_b += size;
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_alloc(
-    wio_buf_t* self,
-    size_t size,
-    void** ptr
-) {
-    //TODO: Memory allocation
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_free(
-    wio_buf_t* self,
-    size_t size
-) {
-    //Update cursor
-    self->pos_a += size;
-
-    return WIO_OK;
-}
+wio_timer_t system_timer;
 
 /**
  * {@inheritDoc}
