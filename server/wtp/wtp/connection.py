@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, deferLater
 
 import wtp.constants as consts
 from wtp.util import EventTarget, read_stream
@@ -33,8 +33,9 @@ class WTPConnection(EventTarget)
         self._recv_msg_begin = 0
         self._recv_msg_size = 0
         # Unstable internal variables
-        self.__read_pending = False
+        self.__write_pending = False
         self.__recv_deferreds = []
+        self.__current_opspec_id = 1
     def _handle_packet(self, stream):
         """
         Handle WTP packet for current connection.
@@ -127,22 +128,30 @@ class WTPConnection(EventTarget)
         payload = stream.read(payload_size)
         # Validate checksum
         stream.validate_checksum()
-        # For begin message packet
-        if msg_begin:
-            # Check if new message begins at then end of old message
-            last_msg_end = self._recv_msg_begin+self._recv_msg_size
-            if offset!=last_msg_end
+        # Message end
+        msg_end = self._recv_msg_begin+self._recv_msg_size
+        # Check if packet begins at acknowledged position
+        if offset!=self._recv_seq:
+            return
+        # For begin of the message
+        if begin_msg:
+            # Check if new message begins at the ent of old message
+            if offset!=msg_end:
                 return
-            # Update message begin position and size
+            # Check if payload size is greater than message size
+            if payload_size>msg_size:
+                return
+            # Update message begin and message size
             self._recv_msg_begin = offset
             self._recv_msg_size = msg_size
-            # Clear message buffer
+            # Update message end
+            msg_end = offset+msg_size
+            # Reset received message buffer
             self._recv_msg_buf = b""
-        # Drop packet data if offset does not match acked position
-        # TODO: Sliding window-based data transmission
-        if offset!=self._recv_seq or offset+payload_size>self._recv_msg_begin+self._recv_msg_size:
-            self._send_ack()
-            return
+        else:
+            # Check if end of payload exceeds message data range
+            if offset+payload_size>msg_end:
+                return
         # Update sequence number
         self._recv_seq += payload_size
         # Append data to buffer
@@ -188,3 +197,35 @@ class WTPConnection(EventTarget)
         else:
             self.__recv_deferreds.append(d)
         return d
+    def __send_read_opspec(self):
+        self._server._send_opspecs(self._wisp_id, [read_opspec(24, self.__current_opspec_id)])
+        self.__current_opspec_id += 1
+    def __do_send_write_opspec(self):
+        self.__write_pending = False
+        send_data = b""
+        # Send all control packets
+        while self._send_packets and len(send_data)<24:
+            send_data += self._send_packets.pop(0)
+        # Send data
+        if self._send_seq==self._send_msg_begin+self._send_msg_size:
+            self._send_msgs.pop(0)
+            self._send_msg_begin = self._send_seq
+            self._send_msg_size = len(self._send_msgs[0])
+        begin = self._send_seq-self._send_msg_begin
+        end = begin+24-len(send_data)
+        send_data += self._send_msgs[0][begin:end]
+        # Terminate symbol
+        send_data += b"\x00"
+        # Send write opspec
+        self._server._send_opspecs(self._wisp_id, [write_opspec(send_data, self.__current_opspec_id)])
+        self.__current_opspec_id += 1
+        # Continue send data
+        if self._send_packets or self._send_msgs:
+            self.__send_write_opspec()
+    def __send_write_opspec(self):
+        # Pending write operation
+        if self.__write_pending:
+            return
+        self.__write_pending = True
+        # Wait for 50ms and send
+        self._server._set_timeout(0.05, self.__do_send_write_opspec)

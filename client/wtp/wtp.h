@@ -7,12 +7,23 @@
 typedef uint8_t wtp_mode_t;
 //WTP packet type
 typedef uint8_t wtp_pkt_t;
-//WTP status type
-typedef wio_status_t wtp_status_t;
 //WTP event type
 typedef uint8_t wtp_event_t;
 //WTP link state type
 typedef uint8_t wtp_link_state_t;
+
+//WTP callback linked list item type
+typedef struct wtp_cb_item {
+    //Callback closure data
+    void* _cb_data;
+    //Callback function
+    wio_callback_t _cb;
+
+    //Previous item
+    struct wtp_cb_item* _prev;
+    //Next item
+    struct wtp_cb_item* _next;
+} wtp_cb_item_t;
 
 //WTP client type
 typedef struct wtp {
@@ -21,10 +32,10 @@ typedef struct wtp {
     //Uplink state
     wtp_link_state_t _uplink_state;
 
-    //Downlink mode
-    wtp_mode_t _downlink_mode;
-    //Uplink mode
-    wtp_mode_t _uplink_mode;
+    //Reliable downlink
+    bool _reliable_downlink;
+    //Reliable uplink
+    bool _reliable_uplink;
 
     //Sliding window size
     uint16_t _sliding_window;
@@ -48,6 +59,8 @@ typedef struct wtp {
     //Checksum function
     uint8_t (*_checksum_func)(uint8_t*, size_t, size_t);
 
+    //Received message buffer
+    wio_buf_t _recv_msg_buf;
     //Received message begin position
     uint16_t _recv_msg_begin;
     //Received message length
@@ -151,7 +164,13 @@ extern wtp_status_t wtp_close(
 );
 
 /**
- * Send data to WTP server
+ * Send message to WTP server.
+ *
+ * @param self WTP endpoint instance
+ * @param data Data to send
+ * @param size Size of data
+ * @param cb_data Callback closure data
+ * @param cb Callback function
  */
 extern wtp_status_t wtp_send(
     wtp_t* self,
@@ -162,11 +181,14 @@ extern wtp_status_t wtp_send(
 );
 
 /**
- * Receive data from WTP server
+ * Receive message from WTP server.
+ *
+ * @param self WTP endpoint instance
+ * @param cb_data Callback closure
+ * @param cb Callback function
  */
 extern wtp_status_t wtp_recv(
     wtp_t* self,
-    size_t size,
     void* cb_data,
     wio_callback_t cb
 );

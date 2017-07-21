@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include "wisp-base.h"
+#include "wtp.h"
 
 //Blockwrite data buffer
 static uint8_t blockwrite_buffer[] = {0};
@@ -32,7 +33,12 @@ static void ert_ack_callback(void) {
  * WISP RFID Read callback.
  */
 static void ert_read_callback(void) {
-
+    //TODO: Read size
+    wtp_read_hook(
+        ert_wtp_ep,
+        wisp_data.readBufPtr
+        24
+    );
 }
 
 /**
@@ -46,7 +52,11 @@ static void ert_write_callback(void) {
  * WISP RFID Blockwrite callback.
  */
 static void ert_blockwrite_callback(void) {
-    
+    wtp_blockwrite_hook(
+        ert_wtp_ep,
+        (uint8_t*)(wisp_data.blockWriteBufPtr),
+        *wisp_data.blockWriteSizePtr
+    );
 }
 
 static WIO_CALLBACK(ert_resume_exec) {

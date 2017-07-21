@@ -1,0 +1,13 @@
+# CCS files
+# ?
+TAGS
+# Build files
+build
+# Launch files
+.launches
+# Target configuration
+targetConfigs
+# Debug files
+Debug
+# Release files
+Release

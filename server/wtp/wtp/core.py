@@ -7,15 +7,19 @@ from wtp.connection import WTPConnection
 
 class WTPServer(EventTarget):
     """ WTP server type. """
-    def __init__(self):
+    def __init__(self, llrp_factory):
         # Initialize base classes
         super(WTPServer, self).__init__()
+        # LLRP factory
+        self._llrp_factory = llrp_factory
         # Last seen EPC data
         self._last_epc = {}
         # WTP connections
         self._connections = {}
         # Checksum
         self._checksum = 0
+        # TODO: Reactor
+        self._reactor = None
     def _handle_tag_report(self, llrp_msg):
         """
         Handle LLRP tag report from reader.
@@ -39,7 +43,7 @@ class WTPServer(EventTarget):
                 # Read data result
                 read_data = opspec_result.get("ReadData")
                 if read_data:
-                    stream = hecksumStream(read_data, checksum_func=util.xor_checksum)
+                    stream = ChecksumStream(read_data, checksum_func=util.xor_checksum)
                     self._handle_packets(stream, wisp_id)
             # TODO: Send WTP packets?
             pass
@@ -81,7 +85,29 @@ class WTPServer(EventTarget):
                 # Remove connection object when fully closed
                 if connection._uplink_state==WTP_STATE_CLOSED and connection._downlink_state==WTP_STATE_CLOSED:
                     del self._connections[wisp_id]
-    def _reset_checksum(self, stream):
-        pass
-    def _validate_checksum(self, stream):
-        pass
+    def _set_timeout(self, time, func, *args, **kwargs):
+        """
+        Call function after given timeout.
+
+        :param time: Timeout
+        :param func: Function to call
+        :param args: Arguments
+        :param kwargs: Keyword arguments
+        :returns: A deferred object which will be resolved when the function is executed
+        """
+        return deferLater(self._reactor, time, func, *args, **kwargs)
+    def _send_opspecs(self, wisp_id, opspecs):
+        """
+        Send OpSpecs to WISP.
+
+        :param wisp_id: WISP ID
+        :param opspecs: OpSpecs to send
+        """
+        # Ensure OpSpecs is a list
+        if not isinstance(opspecs, Container):
+            opspecs = [opspecs]
+        # TODO: Sending multiple OpSpecs at once
+        if len(opspecs)>1:
+            return
+        # TODO: AccessSpec callback
+        self._llrp_factory.nextAccess
