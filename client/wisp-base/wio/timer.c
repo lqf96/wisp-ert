@@ -49,7 +49,7 @@ wio_status_t wio_set_timeout(
     //Set flag
     timer->flag = true;
     //Set time
-    timer->_time = current_time;
+    timer->_time = current_time+time;
     //Set callback and closure data
     timer->cb = cb;
     timer->cb_data = cb_data;
