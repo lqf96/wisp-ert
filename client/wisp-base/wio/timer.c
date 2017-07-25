@@ -138,13 +138,14 @@ void wio_timer_callback() {
     while (timer_begin&&(timer_begin->_time<=current_time)) {
         wio_timer_t* timer = timer_begin;
 
-        //Invoke timer
-        if (timer->cb)
-            timer->cb(timer->cb_data, WIO_OK, NULL);
         //Update linked list begin item
         timer_begin = timer->_next;
         //Reset timer
         timer->flag = false;
+
+        //Invoke timer callback
+        if (timer->cb)
+            timer->cb(timer->cb_data, WIO_OK, NULL);
     }
 
     //Update current time

@@ -26,5 +26,8 @@ extern void wio_timer_callback();
 ////////////////////////////////////////////////////////////////////////////
 #pragma vector=TIMER2_A0_VECTOR //TCCR0 Interrupt Vector for TIMER A1
 __interrupt void INT_Timer2A0(void) {
+    //Timer interrupt callback
     wio_timer_callback();
+
+    __bis_SR_register_on_exit(LPM3_bits);
 }

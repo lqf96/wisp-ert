@@ -26,10 +26,12 @@ WIO_CALLBACK(toggle_led) {
 void main(void) {
     wio_timer_t timer;
 
-    wio_init();
+    WISP_init();
 
     wio_timer_init(&timer);
     wio_set_timeout(&timer, 1000, NULL, toggle_led);
+
+    wio_init();
 
     while (true);
 }

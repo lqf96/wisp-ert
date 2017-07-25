@@ -15,8 +15,9 @@ wio_status_t wio_init() {
     //ACLK(=REFO), up mode, clear TAR
     TA2CTL = TASSEL_1|MC_1|TACLR;
 
-    //TODO: Enable interrupts
-    //__bis_SR_register(GIE);
+    //Enter low power mode
+    while (1)
+        __bis_SR_register(LPM3_bits|GIE);
 
     return WIO_OK;
 }
