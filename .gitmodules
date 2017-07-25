@@ -1,3 +1,0 @@
-[submodule "client/u-rpc/u-rpc"]
-	path = client/u-rpc/u-rpc
-	url = https://github.com/lqf96/u-rpc
