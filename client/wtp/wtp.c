@@ -40,43 +40,54 @@ static wtp_event_t wtp_trigger_event(
 static wtp_status_t wtp_verify_checksum(
     wtp_t* self
 ) {
-    //TODO: Verify checksum
+    wio_buf_t* buf = &self->_recv_buf;
+    uint8_t read_checksum, calc_checksum;
+
+    //Calculate checksum
+    calc_checksum = self->_checksum_func(buf->buffer, self->_recv_pkt_begin, buf->pos_a);
+    //Read checksum from stream
+    WIO_TRY(wio_read(buf, &read_checksum, 1))
+    //Compare checksum
+    if (read_checksum!=calc_checksum)
+        return WTP_ERR_INVALID_CHECKSUM;
 
     return WIO_OK;
 }
 
 /**
  * Begin constructing a new WTP packet.
+ *
+ * @param self WTP endpoint instance
+ * @param packet_type Packet type
  */
 static wtp_status_t wtp_begin_packet(
     wtp_t* self,
     wtp_pkt_t packet_type
 ) {
-    //TODO: Begin packet
+    wio_buf_t* pkt_buf = &self->_send_pkt_buf;
+
+    //Reserve space for send packet size
+    WIO_TRY(wio_alloc(pkt_buf, 1, &self->_send_pkt_size))
+    //Begin position
+    self->_send_pkt_begin = pkt_buf->pos_b;
+    //Write packet type
+    WIO_TRY(wio_write(pkt_buf, &packet_type, 1))
 
     return WIO_OK;
 }
 
 /**
- * End and send a new WTP packet
- */
-static wtp_status_t wtp_send_packet(
-    wtp_t* self
-) {
-    //TODO: Send packet
-
-    return WIO_OK;
-}
-
-/**
- * Send acknowledgement to server.
+ * End a WTP packet and request sending the packet.
  *
  * @param self WTP endpoint instance
  */
-static wtp_status_t wtp_send_ack(
+static wtp_status_t wtp_end_packet(
     wtp_t* self
 ) {
-    //TODO: Send ack
+    //Packet size
+    uint8_t pkt_size = (uint8_t)(self->_send_pkt_buf.pos_b-self->_send_pkt_begin);
+    //Write packet size
+    *(self->_send_pkt_size) = pkt_size;
 
     return WIO_OK;
 }
@@ -104,7 +115,8 @@ static wtp_status_t wtp_handle_open(
     self->_downlink_reliable = (bool)downlink_reliable;
 
     //Send acknowledgement
-    WIO_TRY(wtp_send_ack(self))
+    WIO_TRY(wtp_begin_packet(self, WTP_PKT_ACK))
+    WIO_TRY(wtp_end_packet(self))
     //Invoke and remove callback
     WIO_TRY(wtp_trigger_event(self, WTP_EVENT_OPEN, WIO_OK, NULL))
 
@@ -136,7 +148,8 @@ static wtp_status_t wtp_handle_close(
     }
 
     //Send acknowledgement
-    WIO_TRY(wtp_send_ack(self))
+    WIO_TRY(wtp_begin_packet(self, WTP_PKT_ACK))
+    WIO_TRY(wtp_end_packet(self))
 
     return WIO_OK;
 }
@@ -165,7 +178,7 @@ static wtp_status_t wtp_handle_ack(
     else if (self->_uplink_state==WTP_STATE_CLOSING)
         self->_uplink_state = WTP_STATE_CLOSED;
 
-    //TODO: Sliding window-based sending
+    //TODO: Receive send packet ack
 
     return WIO_OK;
 }
@@ -232,11 +245,21 @@ static wtp_status_t wtp_handle_msg_data(
 
     //End of message
     if (offset+payload_size==msg_end) {
-        //TODO: Invoke callback
+        size_t next_cb = self->_recv_cb_begin;
+        wio_callback_t cb = self->_recv_cb[next_cb];
+        void* cb_data = self->_recv_cb_data[next_cb];
+
+        //Invoke callback
+        if (cb)
+            cb(cb_data, WIO_OK, &self->_recv_msg_buf);
+        //Update queue begin
+        self->_recv_cb_begin++;
+        if (self->_recv_cb_begin==WIO_RECV_CB_MAX)
+            self->_recv_cb_begin = 0;
     }
 
     //Send acknowledgement
-    WIO_TRY(wtp_send_ack(self))
+    WIO_TRY(wtp_end_packet(self))
 
     return WIO_OK;
 }
@@ -274,46 +297,68 @@ static wtp_status_t wtp_handle_cont_msg(
  */
 wtp_status_t wtp_init(
    wtp_t* self,
+   uint8_t* epc_mem,
+   size_t epc_buf_size,
+   uint8_t* write_mem,
+   size_t write_buf_size,
    size_t send_ctrl_buf_size,
    size_t send_data_buf_size,
-   size_t recv_msg_buf_size
+   size_t recv_msg_buf_size,
+   uint8_t (*checksum_func)(uint8_t*, uint16_t, uint16_t)
 ) {
-    uint8_t* send_ctrl_mem;
+    uint8_t* send_pkt_mem;
     uint8_t* send_data_mem;
     uint8_t* recv_msg_mem;
 
     //Downlink and uplink state
     self->_downlink_state = WTP_STATE_CLOSED;
     self->_uplink_state = WTP_STATE_CLOSED;
+    //Sliding window (Temporarily set to 128)
+    self->_sliding_window = 128;
 
-    //Send control buffer
-    send_ctrl_mem = malloc(send_ctrl_buf_size);
-    if (!send_ctrl_mem)
+    //EPC buffer
+    WIO_TRY(wio_buf_init(&self->_epc_buf, epc_mem, epc_buf_size))
+    //Write memory buffer
+    WIO_TRY(wio_buf_init(&self->_write_mem_buf, write_mem, write_buf_size))
+
+    //Send packets buffer
+    send_pkt_mem = malloc(send_ctrl_buf_size);
+    if (!send_pkt_mem)
         return WIO_ERR_NO_MEMORY;
-    WIO_TRY(wio_buf_init(&self->_send_ctrl_buf, send_ctrl_mem, send_ctrl_buf_size))
+    WIO_TRY(wio_buf_init(&self->_send_pkt_buf, send_pkt_mem, send_ctrl_buf_size))
     //Send data buffer
     send_data_mem = malloc(recv_msg_buf_size);
     if (!send_data_mem)
         return WIO_ERR_NO_MEMORY;
     WIO_TRY(wio_buf_init(&self->_send_data_buf, send_data_mem, send_data_buf_size))
+    //Send data sequence number
+    self->_send_seq = 0;
     //Send message begin position and size
     self->_send_msg_begin = 0;
     self->_send_msg_size = 0;
+    //Send flag
+    self->_send_flag = false;
 
     //Receive message buffer
     recv_msg_mem = malloc(recv_msg_buf_size);
     if (!recv_msg_mem)
         return WIO_ERR_NO_MEMORY;
     WIO_TRY(wio_buf_init(&self->_recv_msg_buf, recv_msg_mem, recv_msg_buf_size))
+    //Receive sequence number
+    self->_recv_seq = 0;
     //Receive message begin position
     self->_recv_msg_begin = 0;
     self->_recv_msg_size = 0;
 
-    //TODO: Sliding window (Temporarily set to 128)
-    self->_sliding_window = 128;
+    //Begin and end of receive message callbacks
+    self->_recv_cb_begin = 0;
+    self->_recv_cb_end = 0;
 
     //Timer
     WIO_TRY(wio_timer_init(&self->_timer))
+
+    //Checksum function
+    self->_checksum_func = checksum_func;
 
     //Event callbacks
     for (size_t i=0;i<=WTP_EVENT_MAX;i++) {
@@ -331,7 +376,7 @@ wtp_status_t wtp_connect(
     wtp_t* self,
     bool reliable_uplink
 ) {
-    wio_buf_t* buf = &self->_send_ctrl_buf;
+    wio_buf_t* buf = &self->_send_pkt_buf;
     uint8_t _reliable_uplink = reliable_uplink;
 
     //Uplink already opened
@@ -342,7 +387,7 @@ wtp_status_t wtp_connect(
     //Construct open packet
     WIO_TRY(wio_write(buf, &_reliable_uplink, 1))
     //Send open packet
-    WIO_TRY(wtp_send_packet(self))
+    WIO_TRY(wtp_end_packet(self))
 
     //Update uplink state
     self->_uplink_state = WTP_STATE_OPENING;
@@ -362,7 +407,7 @@ wtp_status_t wtp_close(
 
     WIO_TRY(wtp_begin_packet(self, WTP_PKT_CLOSE))
     //Send close packet
-    WIO_TRY(wtp_send_packet(self))
+    WIO_TRY(wtp_end_packet(self))
 
     return WIO_OK;
 }
@@ -373,11 +418,15 @@ wtp_status_t wtp_close(
 wtp_status_t wtp_send(
     wtp_t* self,
     uint8_t* data,
-    size_t size,
+    uint16_t size,
     void* cb_data,
     wio_callback_t cb
 ) {
-    //TODO: Wtf here
+    wio_buf_t* data_buf = &self->_send_data_buf;
+
+    //Write data to send data buffer
+    WIO_TRY(wio_write(data_buf, data, size))
+    //TODO: Send callback
 
     return WIO_OK;
 }
@@ -401,7 +450,26 @@ wtp_status_t wtp_read_hook(
     void* data,
     size_t size
 ) {
-    //TODO: Handle read data
+    wio_status_t status = WIO_OK;
+    wio_buf_t* pkt_buf = &self->_send_pkt_buf;
+    wio_buf_t* data_buf = &self->_send_data_buf;
+    wio_buf_t* epc_buf = &self->_epc_buf;
+    wio_buf_t* write_mem_buf = &self->_write_mem_buf;
+    uint8_t pkt_size;
+
+    //Clear EPC and write memory buffer
+    WIO_TRY(wio_reset(epc_buf))
+    WIO_TRY(wio_reset(write_mem_buf))
+    //Copy packets from packets buffer to EPC buffer
+    while (status==WIO_OK) {
+        WIO_TRY(wio_read(pkt_buf, &pkt_size, 1))
+        WIO_TRY(wio_copy(pkt_buf, epc_buf, pkt_size))
+
+        //No more packets to send
+        if (pkt_buf->pos_a>=pkt_buf->pos_b)
+            break;
+    }
+    //TODO: Copy data to Read buffer
 
     return WIO_OK;
 }
@@ -422,7 +490,8 @@ wtp_status_t wtp_blockwrite_hook(
     while (true) {
         wtp_pkt_t packet_type;
 
-        //TODO: Reset checksum
+        //Packet begin position
+        self->_recv_pkt_begin = buf->pos_a;
         //Read packet type
         WIO_TRY(wio_read(buf, &packet_type, 1))
 

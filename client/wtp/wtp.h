@@ -5,6 +5,8 @@
 
 //Maximum event type
 #define _WTP_EVENT_MAX 0x03
+//Size of receive callback
+#define _WTP_RECV_CB_MAX 0x05
 
 //WTP status type
 typedef wio_status_t wtp_status_t;
@@ -43,24 +45,35 @@ typedef struct wtp {
     //Sliding window size
     uint16_t _sliding_window;
 
-    //Send control buffer
-    wio_buf_t _send_ctrl_buf;
+    //EPC buffer
+    wio_buf_t _epc_buf;
+    //Write memory buffer
+    wio_buf_t _write_mem_buf;
+
+    //Send packet buffer
+    wio_buf_t _send_pkt_buf;
     //Send data buffer
     wio_buf_t _send_data_buf;
     //Send data sequence number
     uint16_t _send_seq;
 
+    //Pointer to send packet size
+    uint8_t* _send_pkt_size;
+    //Send packet begin position
+    uint16_t _send_pkt_begin;
     //Send message begin position
     uint16_t _send_msg_begin;
     //Send message length
     uint16_t _send_msg_size;
+    //Send flag
+    bool _send_flag;
 
     //Receive buffer
     wio_buf_t _recv_buf;
     //Receive data sequence number
     uint16_t _recv_seq;
-    //Checksum function
-    uint8_t (*_checksum_func)(uint8_t*, size_t, size_t);
+    //Receive packet begin position
+    uint16_t _recv_pkt_begin;
 
     //Received message buffer
     wio_buf_t _recv_msg_buf;
@@ -68,6 +81,18 @@ typedef struct wtp {
     uint16_t _recv_msg_begin;
     //Received message length
     uint16_t _recv_msg_size;
+
+    //Receive message callbacks
+    wio_callback_t _recv_cb[_WTP_RECV_CB_MAX];
+    //Closure data
+    void* _recv_cb_data[_WTP_RECV_CB_MAX];
+    //Begin of receive message callbacks
+    size_t _recv_cb_begin;
+    //End of receive message callbacks
+    size_t _recv_cb_end;
+
+    //Checksum function
+    uint8_t (*_checksum_func)(uint8_t*, uint16_t, uint16_t);
 
     //Timer instance
     wio_timer_t _timer;
@@ -130,14 +155,21 @@ const wtp_link_state_t WTP_STATE_OPENED = 0x02;
 //Closing
 const wtp_link_state_t WTP_STATE_CLOSING = 0x03;
 
+const size_t WIO_RECV_CB_MAX = _WTP_RECV_CB_MAX;
+
 /**
  * WTP type constructor
  */
 extern wtp_status_t wtp_init(
     wtp_t* self,
+    uint8_t* epc_mem,
+    size_t epc_buf_size,
+    uint8_t* write_mem,
+    size_t write_buf_size,
     size_t send_ctrl_buf_size,
     size_t send_data_buf_size,
-    size_t recv_msg_buf_size
+    size_t recv_msg_buf_size,
+    uint8_t (*checksum_func)(uint8_t*, uint16_t, uint16_t)
 );
 
 /**
