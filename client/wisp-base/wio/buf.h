@@ -7,12 +7,12 @@ typedef struct wio_buf {
     //Buffer
     uint8_t* buffer;
     //Buffer size
-    size_t size;
+    uint16_t size;
 
-    //Cursor A
-    size_t pos_a;
-    //Cursor B
-    size_t pos_b;
+    //Cursor A (Reading)
+    uint16_t pos_a;
+    //Cursor B (Writing)
+    uint16_t pos_b;
 } wio_buf_t;
 
 //Current time
@@ -29,7 +29,7 @@ extern uint32_t current_time;
 extern wio_status_t wio_buf_init(
     wio_buf_t* self,
     uint8_t* buffer,
-    size_t size
+    uint16_t size
 );
 
 /**
@@ -43,7 +43,7 @@ extern wio_status_t wio_buf_init(
 extern wio_status_t wio_read(
     wio_buf_t* self,
     void* data,
-    size_t size
+    uint16_t size
 );
 
 /**
@@ -57,7 +57,7 @@ extern wio_status_t wio_read(
 extern wio_status_t wio_write(
     wio_buf_t* self,
     void* data,
-    size_t size
+    uint16_t size
 );
 
 /**
@@ -70,7 +70,7 @@ extern wio_status_t wio_write(
 extern wio_status_t wio_copy(
     wio_buf_t* from,
     wio_buf_t* to,
-    size_t size
+    uint16_t size
 );
 
 /**
@@ -83,7 +83,7 @@ extern wio_status_t wio_copy(
  */
 extern wio_status_t wio_alloc(
     wio_buf_t* self,
-    size_t size,
+    uint16_t size,
     void** ptr
 );
 
@@ -96,7 +96,7 @@ extern wio_status_t wio_alloc(
  */
 extern wio_status_t wio_free(
     wio_buf_t* self,
-    size_t size
+    uint16_t size
 );
 
 /**
