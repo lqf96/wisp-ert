@@ -1,44 +1,34 @@
 # Minimal example; see inventory.py for more.
 from __future__ import absolute_import, unicode_literals
-from sllurp import llrp
+from sllurp.llrp import LLRPClientFactory
 from twisted.internet import reactor
-from wtp.llrp_util import read_opspec, write_opspec, wisp_target_info
-import logging, json, sys
-
 from sllurp.log import init_logging
 
-#init_logging(True, False)
+from wtp.core import WTPServer
+from wtp.connection import WTPConnection
+import wtp.constants as consts
 
-def tags_report(report):
-    data = report.msgdict['RO_ACCESS_REPORT']['TagReportData']
-    for t in data:
-        if t["EPC-96"].startswith(b"00"):
-            print(t)
+def test_send():
+    print(factory.protocols)
+    c.send(b"test")
 
-def test_blockwrite(proto):
-    print("test blockwrite")
-    return proto.startAccess(
-        readWords=None,
-        writeWords=write_opspec(b"test", 1),
-        target=wisp_target_info(0)
-    )
+init_logging()
 
-def test_read(proto):
-    print("test read")
-    return proto.startAccess(
-        readWords=read_opspec(4, 1),
-        writeWords=None,
-        target=wisp_target_info(0)
-    )
-
-factory = llrp.LLRPClientFactory(
+# Factory
+factory = LLRPClientFactory(
+    antennas=[4],
     report_every_n_tags=1,
     modulation="WISP5",
-    start_inventory=True,
-    antennas=[4],
+    start_inventory=True
 )
-factory.addTagReportCallback(tags_report)
-factory.addStateCallback(llrp.LLRPClient.STATE_INVENTORYING, test_read)
+# Server
+server = WTPServer(factory)
+# Connection (temp)
+c = server._connections[0] = WTPConnection(server, 0)
+c._downlink_state = consts.WTP_STATE_OPENED
+c._uplink_state = consts.WTP_STATE_OPENED
 
-reactor.connectTCP('192.168.10.15', llrp.LLRP_PORT, factory)
-reactor.run()
+reactor.callLater(2, test_send)
+
+# Start server
+server.start("192.168.10.15")

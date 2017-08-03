@@ -2,34 +2,8 @@ from __future__ import absolute_import, unicode_literals
 import struct
 from io import BytesIO
 
-from wtp.error import WTPError, WTP_ERR_INVALID_CHECKSUM
-
-def read_stream(stream, fmt):
-    """
-    Read binary data from stream with given format.
-
-    :param stream: Stream to read from
-    :param fmt: Binary data format
-    :returns: Read data
-    """
-    # Read data
-    read_len = struct.calcsize(fmt)
-    result = struct.unpack(fmt, stream.read(read_len))
-    # One result
-    if len(result)==1:
-        return result[0]
-    else:
-        return result
-
-def write_stream(stream, fmt, *args):
-    """
-    Write binary data to stream with given format.
-
-    :param stream: Stream to write to
-    :param fmt: Binary data format
-    """
-    # Write data
-    stream.write(struct.pack(fmt, *args))
+from wtp.error import WTPError
+from wtp.constants import WTP_ERR_INVALID_CHECKSUM
 
 class EventTarget(object):
     """ Event target mix-in class. """
@@ -104,13 +78,50 @@ class ChecksumStream(BytesIO):
         calc_checksum = 0
         if not self._checksum_func:
             return
-        buffer_slice = self.getbuffer()[self._begin_pos:end_pos]
+        buffer_slice = self.getvalue()[self._begin_pos:end_pos]
         calc_checksum = self._checksum_func(buffer_slice)
         # Read checksum
-        read_checksum = read_stream(self, self._checksum_type)
+        read_checksum = self.read_stream(self._checksum_type)
         # Throw checksum error if validation failed
         if read_checksum!=calc_checksum:
             raise WTPError(WTP_ERR_INVALID_CHECKSUM)
+    def read_stream(self, fmt, endian="<"):
+        """
+        Read binary data from stream with given format.
+
+        :param fmt: Binary data format
+        :returns: Read data
+        """
+        # Read data
+        read_len = struct.calcsize(endian+fmt)
+        result = struct.unpack(endian+fmt, self.read(read_len))
+        # One result
+        if len(result)==1:
+            return result[0]
+        else:
+            return result
+    def write_stream(self, fmt, *args, **kwargs):
+        """
+        Write binary data to stream with given format.
+
+        :param fmt: Binary data format
+        """
+        # Endianness
+        endian = kwargs.pop("endian", "<")
+        # Write data
+        self.write(struct.pack(endian+fmt, *args))
+    def write_checksum(self):
+        """
+        Write checksum to stream.
+        """
+        end_pos = self.tell()
+        # Calculate checksum
+        if not self._checksum_func:
+            return
+        buffer_slice = self.getvalue()[self._begin_pos:end_pos]
+        checksum = self._checksum_func(buffer_slice)
+        # Write checksum to stream
+        self.write(struct.pack(self._checksum_type, checksum))
 
 def xor_checksum(buf):
     """

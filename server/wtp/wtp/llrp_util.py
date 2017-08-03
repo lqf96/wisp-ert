@@ -1,7 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 import struct
 
-from wtp.error import WTPError, WTP_ERR_INVALID_SIZE
+from wtp.constants import WTP_ERR_INVALID_SIZE
+from wtp.error import WTPError
 
 # EPC memory bank
 RFID_MB_EPC = 0x01
@@ -43,10 +44,11 @@ def write_opspec(data, opspec_id=0):
     :param opspec_id: OpSpec ID
     :returns: LLRP Write or BlockWrite OpSpec
     """
-    # Data size must be multiple of 2
     n_words, remainder = divmod(len(data), 2)
+    # Write data padding
     if remainder!=0:
-        raise WTPError(WTP_ERR_INVALID_SIZE)
+        n_words += 1
+        data += b"\x00"
     # BlockWrite OpSpec
     return {
         "OpSpecID": opspec_id,
@@ -84,4 +86,19 @@ def wisp_target_info(wisp_id):
         "TagData": struct.pack(">H", wisp_id),
         # Length of data in bits
         "DataBitCount": 16
+    }
+
+def access_stop_param(trigger_type=1, count=1):
+    """
+    Generate AccessSpec stop parameter.
+
+    :param trigger_type: Trigger type
+    :param count: AccessSpec result count
+    :returns: AccessSpec stop parameter
+    """
+    return {
+        # Trigger type
+        "AccessSpecStopTriggerType": trigger_type,
+        # Count
+        "OperationCountValue": count
     }

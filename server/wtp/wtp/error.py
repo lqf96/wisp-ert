@@ -1,5 +1,5 @@
-WTP_ERR_INVALID_SIZE = 0x01
+from __future__ import unicode_literals, absolute_import
 
-class WTPError(object):
+class WTPError(BaseException):
     def __init__(self, reason):
         self.reason = reason
