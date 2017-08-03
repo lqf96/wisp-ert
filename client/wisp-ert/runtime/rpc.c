@@ -1,19 +1,10 @@
-#include "runtime/runtime.h"
+#include <rpc.h>
 
-/**
- * {@inheritDoc}
- */
-ert_status_t ert_func_init() {
-    //TODO: Function init
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-ert_status_t ert_const_init() {
-    //TODO: Const init
-
-    return WIO_OK;
-}
+//Open function handle
+urpc_func_t ert_func_open;
+//Close function handle
+urpc_func_t ert_func_close;
+//Read function handle
+urpc_func_t ert_func_read;
+//Write function handle
+urpc_func_t ert_func_write;

@@ -1,6 +1,9 @@
 #pragma once
 
 #include <stddef.h>
+#include <stdint.h>
+
+typedef int16_t ssize_t;
 
 /**
  * Close a file.

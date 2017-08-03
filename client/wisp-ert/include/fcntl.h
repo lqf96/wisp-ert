@@ -1,15 +1,15 @@
 #pragma once
 
 //Open for reading only
-extern const int O_RDONLY;
+extern int O_RDONLY;
 //Open for writing only
-extern const int O_WRONLY;
+extern int O_WRONLY;
 //Open for reading and writing
-extern const int O_RDWR;
+extern int O_RDWR;
 //Append on each write
-extern const int O_APPEND;
+extern int O_APPEND;
 //Create file if it does not exist
-extern const int O_CREAT;
+extern int O_CREAT;
 
 /**
  * Open a file.

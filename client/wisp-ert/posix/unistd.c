@@ -1,4 +1,7 @@
 #include <unistd.h>
+#include <runtime.h>
+#include <urpc.h>
+#include <rpc.h>
 
 /**
  * {@inheritDoc}
@@ -6,8 +9,8 @@
 int close(int fd) {
     //Do u-RPC call
     urpc_call(
-        rpc_ep,
-        ERT_HANDLE_CLOSE,
+        ert_rpc_ep,
+        ERT_HANDLE(close),
         URPC_SIG(1, URPC_TYPE_I16),
         URPC_ARG(&fd),
         NULL,
@@ -16,8 +19,8 @@ int close(int fd) {
     //Suspend execution
     ert_suspend_exec();
 
-    //TODO: Return value
-    return 0;
+    //Return result
+    ERT_RETURN(int16_t)
 }
 
 /**
@@ -26,8 +29,8 @@ int close(int fd) {
 ssize_t read(int fd, void* buf, size_t size) {
     //Do u-RPC call
     urpc_call(
-        rpc_ep,
-        ERT_HANDLE_READ,
+        ert_rpc_ep,
+        ERT_HANDLE(read),
         URPC_SIG(2, URPC_TYPE_I16, URPC_TYPE_U16),
         URPC_ARG(&fd, &size),
         NULL,
@@ -36,8 +39,8 @@ ssize_t read(int fd, void* buf, size_t size) {
     //Suspend execution
     ert_suspend_exec();
 
-    //TODO: Return value
-    return 0;
+    //Return result
+    ERT_RETURN(int16_t)
 }
 
 /**
@@ -46,16 +49,16 @@ ssize_t read(int fd, void* buf, size_t size) {
 extern ssize_t write(int fd, void* buf, size_t size) {
     //Do u-RPC call
     urpc_call(
-        rpc_ep,
-        ERT_HANDLE_WRITE,
+        ert_rpc_ep,
+        ERT_HANDLE(write),
         URPC_SIG(2, URPC_TYPE_I16, URPC_TYPE_VARY),
-        URPC_ARG(&fd, URPC_VARY(size, buf)),
+        URPC_ARG(&fd, WIO_VARY(size, buf)),
         NULL,
         ert_resume_exec
     );
     //Suspend execution
     ert_suspend_exec();
 
-    //TODO: Return value
-    return 0;
+    //Return result
+    ERT_RETURN(int16_t)
 }

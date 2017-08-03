@@ -1,6 +1,10 @@
 #include <stdarg.h>
+#include <string.h>
 #include <sys/types.h>
-#include "runtime/runtime.h"
+#include <fcntl.h>
+#include <runtime.h>
+#include <urpc.h>
+#include <rpc.h>
 
 /**
  * {@inheritDoc}
@@ -19,16 +23,16 @@ extern int open(const char* path, int flags, ...) {
 
     //Do u-RPC call
     urpc_call(
-        rpc_ep,
+        ert_rpc_ep,
         ERT_HANDLE(open),
         URPC_SIG(3, URPC_TYPE_VARY, URPC_TYPE_I16, URPC_TYPE_U16),
-        URPC_ARG(URPC_VARY(strlen(path), path), &flags, &mode),
+        URPC_ARG(WIO_VARY(strlen(path), path), &flags, &mode),
         NULL,
         ert_resume_exec
     );
     //Suspend execution
     ert_suspend_exec();
 
-    //TODO: Return value
-    return 0;
+    //Return result
+    ERT_RETURN(int16_t)
 }
