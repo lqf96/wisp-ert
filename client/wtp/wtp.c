@@ -304,7 +304,7 @@ wtp_status_t wtp_init(
    size_t send_ctrl_buf_size,
    size_t send_data_buf_size,
    size_t recv_msg_buf_size,
-   uint8_t (*checksum_func)(uint8_t*, uint16_t, uint16_t)
+   uint8_t (*checksum_func)(const uint8_t*, uint16_t, uint16_t)
 ) {
     uint8_t* send_pkt_mem;
     uint8_t* send_data_mem;
@@ -530,6 +530,22 @@ wtp_status_t wtp_on_event(
     self->_event_cb_data[event] = cb_data;
 
     return WIO_OK;
+}
+
+/**
+ * {@inheritDoc}
+ */
+uint8_t wtp_xor_checksum(
+    const uint8_t* data,
+    uint16_t begin,
+    uint16_t end
+) {
+    uint8_t result = 0;
+
+    for (uint16_t i=begin;i<end;i++)
+        result ^= data[i];
+
+    return result;
 }
 
 //WTP packet handlers

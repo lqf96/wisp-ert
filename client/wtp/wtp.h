@@ -92,7 +92,7 @@ typedef struct wtp {
     size_t _recv_cb_end;
 
     //Checksum function
-    uint8_t (*_checksum_func)(uint8_t*, uint16_t, uint16_t);
+    uint8_t (*_checksum_func)(const uint8_t*, uint16_t, uint16_t);
 
     //Timer instance
     wio_timer_t _timer;
@@ -104,58 +104,58 @@ typedef struct wtp {
 } wtp_t;
 
 //Not acknowledged
-const wtp_status_t WTP_ERR_NOT_ACKED = 0x10;
+static const wtp_status_t WTP_ERR_NOT_ACKED = 0x10;
 //Required action already done
-const wtp_status_t WTP_ERR_ALREADY = 0x11;
+static const wtp_status_t WTP_ERR_ALREADY = 0x11;
 //Connection is busy
-const wtp_status_t WTP_ERR_BUSY = 0x12;
+static const wtp_status_t WTP_ERR_BUSY = 0x12;
 //Invalid parameter
-const wtp_status_t WTP_ERR_INVALID_PARAM = 0x13;
+static const wtp_status_t WTP_ERR_INVALID_PARAM = 0x13;
 //Invalid checksum
-const wtp_status_t WTP_ERR_INVALID_CHECKSUM = 0x14;
+static const wtp_status_t WTP_ERR_INVALID_CHECKSUM = 0x14;
 //Unsupported operation
-const wtp_status_t WTP_ERR_UNSUPPORT_OP = 0x15;
+static const wtp_status_t WTP_ERR_UNSUPPORT_OP = 0x15;
 
 //No more packets
-const wtp_pkt_t WTP_PKT_END = 0x00;
+static const wtp_pkt_t WTP_PKT_END = 0x00;
 //Open WTP connection
-const wtp_pkt_t WTP_PKT_OPEN = 0x01;
+static const wtp_pkt_t WTP_PKT_OPEN = 0x01;
 //Close WTP connection
-const wtp_pkt_t WTP_PKT_CLOSE = 0x02;
+static const wtp_pkt_t WTP_PKT_CLOSE = 0x02;
 //Acknowledgement
-const wtp_pkt_t WTP_PKT_ACK = 0x03;
+static const wtp_pkt_t WTP_PKT_ACK = 0x03;
 //Begin message
-const wtp_pkt_t WTP_PKT_BEGIN_MSG = 0x04;
+static const wtp_pkt_t WTP_PKT_BEGIN_MSG = 0x04;
 //Continue message
-const wtp_pkt_t WTP_PKT_CONT_MSG = 0x05;
+static const wtp_pkt_t WTP_PKT_CONT_MSG = 0x05;
 //Request uplink transfer
-const wtp_pkt_t WTP_PKT_REQ_UPLINK = 0x06;
+static const wtp_pkt_t WTP_PKT_REQ_UPLINK = 0x06;
 //Protocol error
-const wtp_pkt_t WTP_PKT_ERR = 0x07;
+static const wtp_pkt_t WTP_PKT_ERR = 0x07;
 
 //Maximum packet type number
-const wtp_pkt_t WTP_PKT_MAX = 0x08;
+static const wtp_pkt_t WTP_PKT_MAX = 0x08;
 
 //Connection opened
-const wtp_event_t WTP_EVENT_OPEN = 0x00;
+static const wtp_event_t WTP_EVENT_OPEN = 0x00;
 //Downlink closed
-const wtp_event_t WTP_EVENT_HALF_CLOSE = 0x01;
+static const wtp_event_t WTP_EVENT_HALF_CLOSE = 0x01;
 //Connection closed
-const wtp_event_t WTP_EVENT_CLOSE = 0x02;
+static const wtp_event_t WTP_EVENT_CLOSE = 0x02;
 
 //Maximum event type
-const wtp_event_t WTP_EVENT_MAX = 0x03;
+static const wtp_event_t WTP_EVENT_MAX = 0x03;
 
 //Closed
-const wtp_link_state_t WTP_STATE_CLOSED = 0x00;
+static const wtp_link_state_t WTP_STATE_CLOSED = 0x00;
 //Opening
-const wtp_link_state_t WTP_STATE_OPENING = 0x01;
+static const wtp_link_state_t WTP_STATE_OPENING = 0x01;
 //Opened
-const wtp_link_state_t WTP_STATE_OPENED = 0x02;
+static const wtp_link_state_t WTP_STATE_OPENED = 0x02;
 //Closing
-const wtp_link_state_t WTP_STATE_CLOSING = 0x03;
+static const wtp_link_state_t WTP_STATE_CLOSING = 0x03;
 
-const size_t WIO_RECV_CB_MAX = _WTP_RECV_CB_MAX;
+static const size_t WIO_RECV_CB_MAX = _WTP_RECV_CB_MAX;
 
 /**
  * WTP type constructor
@@ -169,7 +169,7 @@ extern wtp_status_t wtp_init(
     size_t send_ctrl_buf_size,
     size_t send_data_buf_size,
     size_t recv_msg_buf_size,
-    uint8_t (*checksum_func)(uint8_t*, uint16_t, uint16_t)
+    uint8_t (*checksum_func)(const uint8_t*, uint16_t, uint16_t)
 );
 
 /**
@@ -256,4 +256,17 @@ wtp_status_t wtp_on_event(
     wtp_event_t event,
     void* cb_data,
     wio_callback_t cb
+);
+
+/**
+ * Xor checksum function.
+ *
+ * @param data Data buffer
+ * @param begin Begin index of the range to checksum
+ * @param end End index of the range to checksum
+ */
+uint8_t wtp_xor_checksum(
+    const uint8_t* data,
+    uint16_t begin,
+    uint16_t end
 );
