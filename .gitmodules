@@ -1,0 +1,3 @@
+[submodule "u-rpc"]
+	path = u-rpc
+	url = https://github.com/lqf96/u-rpc
