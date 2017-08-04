@@ -2,6 +2,14 @@
 
 #include "defs.h"
 
+//WIO variable length data container type
+typedef struct wio_vary {
+    //Data
+    void* data;
+    //Size of data
+    uint16_t size;
+} wio_vary_t;
+
 //WIO buffer type
 typedef struct wio_buf {
     //Buffer
@@ -56,7 +64,7 @@ extern wio_status_t wio_read(
  */
 extern wio_status_t wio_write(
     wio_buf_t* self,
-    void* data,
+    const void* data,
     uint16_t size
 );
 
@@ -84,7 +92,7 @@ extern wio_status_t wio_copy(
 extern wio_status_t wio_alloc(
     wio_buf_t* self,
     uint16_t size,
-    void** ptr
+    void* _ptr
 );
 
 /**

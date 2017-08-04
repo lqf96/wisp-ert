@@ -44,7 +44,7 @@ wio_status_t wio_read(
  */
 wio_status_t wio_write(
     wio_buf_t* self,
-    void* data,
+    const void* data,
     uint16_t size
 ) {
     //Out of range check
@@ -81,8 +81,10 @@ wio_status_t wio_copy(
 wio_status_t wio_alloc(
     wio_buf_t* self,
     uint16_t size,
-    void** ptr
+    void* _ptr
 ) {
+    void** ptr = (void**)_ptr;
+
     //Move to begin of the buffer
     if (self->size-self->pos_b<size)
         self->pos_b = 0;

@@ -135,11 +135,13 @@ wio_status_t wio_clear_timeout(
  */
 void wio_timer_callback() {
     //Activate timers
-    while (timer_begin&&(timer_begin->_time<=current_time)) {
+    while (timer_begin&&(timer_begin->_time==current_time)) {
         wio_timer_t* timer = timer_begin;
 
-        //Update linked list begin item
+        //Update linked list begin and end item
         timer_begin = timer->_next;
+        if (!timer_begin)
+            timer_end = NULL;
         //Reset timer
         timer->flag = false;
 

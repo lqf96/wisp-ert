@@ -16,8 +16,7 @@ wio_status_t wio_init() {
     TA2CTL = TASSEL_1|MC_1|TACLR;
 
     //Enter low power mode
-    while (1)
-        __bis_SR_register(LPM3_bits|GIE);
+    __bis_SR_register(GIE);
 
     return WIO_OK;
 }

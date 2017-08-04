@@ -29,5 +29,10 @@ __interrupt void INT_Timer2A0(void) {
     //Timer interrupt callback
     wio_timer_callback();
 
-    __bis_SR_register_on_exit(LPM3_bits);
+    //Clear hardware timer first
+    TA2CCTL0 = 0;
+    TA2CTL = 0;
+    //Re-enable hardware timer
+    TA2CCTL0 = CCIE;
+    TA2CTL = TASSEL_1|MC_1|TACLR;
 }
