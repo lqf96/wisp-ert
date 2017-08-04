@@ -29,7 +29,7 @@ void main(void) {
     WISP_init();
 
     wio_timer_init(&timer);
-    wio_set_timeout(&timer, 1000, NULL, toggle_led);
+    wio_set_timeout(&timer, 2, NULL, toggle_led);
 
     wio_init();
 
