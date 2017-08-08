@@ -1,0 +1,35 @@
+#! /usr/bin/env python
+from __future__ import unicode_literals
+from argparse import ArgumentParser
+from sllurp.llrp import LLRP_PORT
+
+from wisp_ert.util import setitem_keypath
+from wisp_ert.fs import LocalFS
+from wisp_ert.runtime import Runtime
+
+# Only run in interactive mode
+if __name__=="__main__":
+    parser = ArgumentParser()
+    # CLI arguments
+    parser.add_argument("-a", "--antenna", type=int, action="append", help="Reader antennas to enable")
+    parser.add_argument("-s", "--server", type=str, help="Reader server IP")
+    parser.add_argument("-p", "--port", type=int, help="Reader server port", default=LLRP_PORT)
+    parser.add_argument("-o", "--option", type=str, action="append", help="Extra options")
+    # Parse arguments
+    options = vars(parser.parse_args())
+    # Handle extra option keypaths
+    extra_opt_ns = {}
+    if options["option"]:
+        for arg in options["option"]:
+            split_arg = arg.split("=", 1)
+            keypath = split_arg[0]
+            value = split_arg[1] if len(split_arg)>1 else True
+            setitem_keypath(extra_opt_ns, keypath, value)
+    options.update(extra_opt_ns)
+    # Start runtime
+    runtime = Runtime(**options)
+    runtime.add_service("fs", LocalFS)
+    runtime.start(
+        server=options["server"],
+        port=options["port"]
+    )

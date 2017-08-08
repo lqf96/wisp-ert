@@ -1,65 +1,20 @@
-from __future__ import unicode_literals
+from __future__ import absolute_import, unicode_literals
 import os, errno, functools
 from abc import ABCMeta, abstractmethod
-
 from six import with_metaclass
+from urpc import StringType, urpc_sig, U8, U16, I16, VARY
 from urpc.util import AllocTable
 
-# Abstract filesystem base class
-class FileSystem(with_metaclass(ABCMeta, object)):
-    # Open file
-    @abstractmethod
-    def open(path, flags, mode=0666):
-        """
-        Open a file and return  file descriptor.
-
-        :param path: Path of the file.
-        :param flags:
-        :param mode:
-        """
-        pass
-    # Close file
-    @abstractmethod
-    def close(fd):
-        """
-        Close a file.
-
-        :param fd: File descriptor.
-        """
-        pass
-    # Read file
-    @abstractmethod
-    def read(fd, size):
-        """
-        Read data from a file descriptor.
-
-        :param size: Size of the data to read
-        """
-        pass
-    # Write file
-    @abstractmethod
-    def write(fd, data):
-        """
-        Write data to a file descriptor.
-
-        :param data: Data to write
-        """
-        pass
-    # Seek
-    @abstractmethod
-    def lseek(fd, offset, whence):
-        """
-        Set the current position of a file descriptor.
-        Return the new cursor position in bytes, starting from the beginning.
-
-        :param fd: File descriptor
-        :param offset: New position of the file descriptor
-        :param whence: How the offset is interpreted
-        """
-        pass
+from wisp_ert.runtime import Service
 
 # System call function proxy
 def _proxy_sys(name):
+    """
+    Wrap system call function as LocalFS service function.
+
+    :param name: System call function name
+    :returns: LocalFS service wrapper
+    """
     sys_func = getattr(os, name)
     # Proxy function
     def proxy(self, fd, *args):
@@ -75,7 +30,7 @@ def _proxy_sys(name):
     return proxy
 
 # Local filesystem class
-class LocalFS(FileSystem):
+class LocalFS(Service):
     # Constructor
     def __init__(self, root_dir="/"):
         # Root directory
@@ -83,7 +38,15 @@ class LocalFS(FileSystem):
         # File descriptor mapping
         self._fd_mapping = AllocTable()
     # Open file
-    def open(path, flags, mode):
+    @urpc_sig([StringType, I16, I16], [I16])
+    def open(self, path, flags, mode=0o666):
+        """
+        Open a file with given flags and mode.
+
+        :param flags: Open flags
+        :param mode: File mode when a new file is going to be created
+        :returns: File descriptor on success, or negative error number on failure
+        """
         # Try to open the file
         try:
             real_path = os.path.join(self._root_dir, path)
@@ -93,7 +56,14 @@ class LocalFS(FileSystem):
         # Add file descriptor to table
         return self._fd_table.add(real_fd)
     # Close file
-    def close(fd):
+    @urpc_sig([I16], [I16])
+    def close(self, fd):
+        """
+        Close a file.
+
+        :param fd: File descriptor of the file
+        :returns: 0 on success, or negative error number on failure
+        """
         # Try to close the file first
         result = self._close(fd)
         if result:
@@ -101,8 +71,47 @@ class LocalFS(FileSystem):
         # Remove file descriptor from table
         del self._fd_table[fd]
         return 0
-    # System function proxies
+    # Read file
+    @urpc_sig([I16, U16], [I16, VARY])
+    def read(self, fd, size):
+        """
+        Read given size of data from file.
+
+        :param fd: File descriptor of the file
+        :returns: Data and its size on success, or negative error number on failure
+        """
+        result = self._read(fd, size)
+        # Successful read
+        if isinstance(result, bytes):
+            return len(result), result
+        # Failed to read
+        else:
+            return result, b""
+    # Private system function proxies
     _close = _proxy_sys("close")
-    read = _proxy_sys("read")
-    write = _proxy_sys("write")
-    lseek = _proxy_sys("lseek")
+    _read = _proxy_sys("read")
+    # Public system function proxies
+    write = urpc_sig([I16, VARY], [I16], _proxy_sys("write"))
+    lseek = urpc_sig([I16, I16, I16], [I16], _proxy_sys("lseek"))
+    # ERT functions
+    functions = {
+        "open": open,
+        "close": close,
+        "read": read,
+        "write": write,
+        "lseek": lseek
+    }
+    # ERT constants
+    constants = [
+        # Open flags
+        (os.O_CREAT, I16),
+        (os.O_RDONLY, I16),
+        (os.O_WRONLY, I16),
+        (os.O_RDWR, I16),
+        # Whence
+        (os.SEEK_SET, I16),
+        (os.SEEK_CUR, I16),
+        (os.SEEK_END, I16),
+        # Error numbers
+        (errno.EBADF, U8),
+    ]
