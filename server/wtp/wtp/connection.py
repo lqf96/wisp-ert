@@ -1,6 +1,6 @@
 from __future__ import absolute_import, unicode_literals
+import functools
 from twisted.internet.defer import Deferred
-from twisted.internet.task import deferLater
 
 import wtp.constants as consts
 from wtp.util import EventTarget, ChecksumStream
@@ -39,7 +39,7 @@ class WTPConnection(EventTarget):
         self._write_pending = False
         # Current OpSpec ID
         self._current_opspec_id = 1
-    def _handle_packet(self, stream):
+    def _handle_packet(self, stream, packet_type):
         """
         Handle WTP packet for current connection.
 
@@ -70,13 +70,14 @@ class WTPConnection(EventTarget):
 
         :param stream: Data stream containing open packet
         """
+        print("Open connection")
         # Read connection mode
         mode = stream.read_stream("B")
         # Validate checksum
         stream.validate_checksum()
         # Update connection information
         self._reliable = True
-        self._uplink_state = WTP_STATE_OPENED
+        self._uplink_state = consts.WTP_STATE_OPENED
         # Send Ack message
         self._send_ack()
     def _handle_close(self, stream):
@@ -108,15 +109,7 @@ class WTPConnection(EventTarget):
         stream.validate_checksum()
         # TODO: What to do next
         pass
-    def _handle_begin_msg(self, stream):
-        """
-        Handle WTP begin message packet.
-        This is a stub function and all works are actually done in "_handle_msg_data()".
-
-        :param stream: Data stream containing begin message packet
-        """
-        self._handle_msg_data(stream, True)
-    def _handle_msg_data(self, stream, msg_begin=False):
+    def _handle_msg_data(self, stream, msg_begin):
         """
         Handle WTP message data packet.
 
@@ -249,3 +242,12 @@ class WTPConnection(EventTarget):
         self._write_pending = True
         # Wait for 50ms and send
         self._server._set_timeout(0.05, self._do_send_write_opspec)
+    # Packet handlers
+    _pkt_handler = {
+        consts.WTP_PKT_OPEN: _handle_open,
+        consts.WTP_PKT_CLOSE: _handle_close,
+        consts.WTP_PKT_ACK: _handle_ack,
+        consts.WTP_PKT_BEGIN_MSG: functools.partial(_handle_msg_data, msg_begin=True),
+        consts.WTP_PKT_CONT_MSG: functools.partial(_handle_msg_data, msg_begin=False),
+        consts.WTP_PKT_REQ_UPLINK: _handle_req_uplink
+    }

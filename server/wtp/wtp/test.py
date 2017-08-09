@@ -23,12 +23,6 @@ factory = LLRPClientFactory(
 )
 # Server
 server = WTPServer(factory)
-# Connection (temp)
-c = server._connections[0] = WTPConnection(server, 0)
-c._downlink_state = consts.WTP_STATE_OPENED
-c._uplink_state = consts.WTP_STATE_OPENED
-
-reactor.callLater(2, test_send)
 
 # Start server
 server.start("192.168.10.15")
