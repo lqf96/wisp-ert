@@ -2,7 +2,7 @@ from __future__ import absolute_import, unicode_literals
 import os, errno, functools
 from abc import ABCMeta, abstractmethod
 from six import with_metaclass
-from urpc import StringType, urpc_sig, U8, U16, I16, VARY
+from urpc import StringType, urpc_sig, U16, I16, VARY
 from urpc.util import AllocTable
 
 from wisp_ert.runtime import Service
@@ -108,10 +108,12 @@ class LocalFS(Service):
         (os.O_RDONLY, I16),
         (os.O_WRONLY, I16),
         (os.O_RDWR, I16),
+        (os.O_CREAT, I16)
         # Whence
         (os.SEEK_SET, I16),
         (os.SEEK_CUR, I16),
         (os.SEEK_END, I16),
         # Error numbers
-        (errno.EBADF, U8),
+        (errno.EBADF, I16),
+        (errno.EINVAL, I16),
     ]

@@ -9,6 +9,7 @@ setup(
     author_email="lqf.1996121@gmail.com",
     description="WISP Extended Runtime (Server-side)",
     license="GPL",
-    packages=["wtp"],
-    install_requires=["six", "u-rpc", "wtp-server"]
+    packages=["wisp_ert"],
+    install_requires=["six", "u-rpc", "wtp-server"],
+    scripts=["wisp-ert"]
 )
