@@ -11,12 +11,15 @@ from wisp_ert.runtime import Runtime
 if __name__=="__main__":
     parser = ArgumentParser()
     # CLI arguments
-    parser.add_argument("-a", "--antenna", type=int, action="append", help="Reader antennas to enable")
-    parser.add_argument("-s", "--server", type=str, help="Reader server IP")
+    parser.add_argument("-s", "--server", type=str, help="Reader server IP", required=True)
+    parser.add_argument("-a", "--antennas", type=str, help="Reader antennas to enable (Comma separated)", default="1")
     parser.add_argument("-p", "--port", type=int, help="Reader server port", default=LLRP_PORT)
     parser.add_argument("-o", "--option", type=str, action="append", help="Extra options")
     # Parse arguments
     options = vars(parser.parse_args())
+    # Antennas
+    options["antennas"] = [int(x.strip()) for x in options["antennas"].split(",")]
+    print(options["antennas"])
     # Handle extra option keypaths
     extra_opt_ns = {}
     if options["option"]:

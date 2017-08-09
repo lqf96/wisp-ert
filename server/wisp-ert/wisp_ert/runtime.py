@@ -2,12 +2,13 @@ from __future__ import absolute_import, unicode_literals
 import functools, struct
 from abc import ABCMeta, abstractproperty
 from six import with_metaclass, iteritems
+from sllurp.llrp import LLRPClientFactory
 from urpc import URPC, urpc_sig, StringType, urpc_type_repr, VARY
 from wtp import WTPServer
 
 from wisp_ert.util import not_implemented
 
-class Service(with_metaclass(ABCMeta, object))
+class Service(with_metaclass(ABCMeta, object)):
     """ The WISP extended runtime service class. """
     @abstractproperty
     def constants(self):
@@ -64,15 +65,15 @@ class Runtime(object):
         )
         # Add service constants query function
         rpc_ep.add_func(
-            func=functools.partial(Runtime._service_constants, self, connection)
+            func=functools.partial(Runtime._service_constants, self, connection),
             arg_types=[StringType],
             ret_types=[VARY],
             name="ert_srv_consts"
         )
         # Services instances for new client
         service_insts = {}
-        for name, service_factory in self._services:
-            service = service_insts = service_factory()
+        for name, service_factory in iteritems(self._services):
+            service = service_factory()
             # Add functions to u-RPC endpoint
             for name, func in iteritems(service.functions):
                 rpc_ep.add_func(func=func, name=name)

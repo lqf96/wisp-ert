@@ -21,7 +21,7 @@ class WTPServer(EventTarget):
         self._last_epc = {}
         # WTP connections
         self._connections = {}
-    def start(self, ip, port=LLRP_PORT):
+    def start(self, server, port=LLRP_PORT):
         """
         Start the WTP server.
 
@@ -31,7 +31,7 @@ class WTPServer(EventTarget):
         # Add tag report callback
         self._llrp_factory.addTagReportCallback(self._handle_tag_report)
         # Connect to reader
-        reactor.connectTCP(ip, port, self._llrp_factory)
+        reactor.connectTCP(server, port, self._llrp_factory)
         # Run reactor
         reactor.run()
     def stop(self):

@@ -36,7 +36,9 @@ class LocalFS(Service):
         # Root directory
         self._root_dir = root_dir
         # File descriptor mapping
-        self._fd_mapping = AllocTable()
+        self._fd_mapping = AllocTable(
+            capacity=32
+        )
     # Open file
     @urpc_sig([StringType, I16, I16], [I16])
     def open(self, path, flags, mode=0o666):
@@ -108,7 +110,7 @@ class LocalFS(Service):
         (os.O_RDONLY, I16),
         (os.O_WRONLY, I16),
         (os.O_RDWR, I16),
-        (os.O_CREAT, I16)
+        (os.O_CREAT, I16),
         # Whence
         (os.SEEK_SET, I16),
         (os.SEEK_CUR, I16),
