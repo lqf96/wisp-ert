@@ -8,5 +8,9 @@ __MACOSX
 __pycache__
 # Virtual environment
 venv
+# Python distribution files
+*.egg-info
+dist
+
 # C/C++ files
 *.o
