@@ -1,14 +1,14 @@
 from __future__ import absolute_import, unicode_literals
 import functools, struct
-from abc import ABCMeta, abstractproperty
-from six import with_metaclass, iteritems
+from abc import ABC, abstractproperty
+from six import iteritems
 from sllurp.llrp import LLRPClientFactory
 from urpc import URPC, urpc_sig, StringType, urpc_type_repr, VARY
 from wtp import WTPServer
 
 from wisp_ert.util import not_implemented
 
-class Service(with_metaclass(ABCMeta, object)):
+class Service(ABC):
     """ The WISP extended runtime service class. """
     @abstractproperty
     def constants(self):

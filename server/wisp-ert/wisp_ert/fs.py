@@ -1,7 +1,5 @@
 from __future__ import absolute_import, unicode_literals
 import os, errno, functools
-from abc import ABCMeta, abstractmethod
-from six import with_metaclass
 from urpc import StringType, urpc_sig, U16, I16, VARY
 from urpc.util import AllocTable
 
@@ -40,7 +38,7 @@ class LocalFS(Service):
             capacity=32
         )
     # Open file
-    @urpc_sig([StringType, I16, I16], [I16])
+    @urpc_sig([StringType, I16, U16], [I16])
     def open(self, path, flags, mode=0o666):
         """
         Open a file with given flags and mode.
