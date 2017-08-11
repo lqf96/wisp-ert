@@ -38,8 +38,6 @@ class WTPConnection(EventTarget):
         self._read_opspecs = []
         # Ongoing AccessSpec flag
         self._ongoing_access_spec = False
-        # Maximum OpSpecs in one AccessSpec
-        self._n_opspecs_max = 8
     def _build_header(self, packet_type):
         """
         Build WTP packet header for sending.
@@ -161,7 +159,16 @@ class WTPConnection(EventTarget):
         # Ongoing AccessSpec
         if self._ongoing_access_spec:
             return
-        #
+        self._ongoing_access_spec = True
+        # TODO: Collect OpSpecs for sending
+        opspecs = []
+        # Send AccessSpec and schedule next sending
+        if opspecs:
+            d = self.server._send_access_spec(wisp_id, opspecs)
+            d.addCallback(lambda _: self._request_access_spec())
+        # No more OpSpecs to send, stop
+        else:
+            self._ongoing_access_spec = False
     def send(self, msg_data):
         """
         Send a message to WISP.
