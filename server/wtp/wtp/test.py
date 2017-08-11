@@ -1,16 +1,11 @@
 # Minimal example; see inventory.py for more.
 from __future__ import absolute_import, unicode_literals
 from sllurp.llrp import LLRPClientFactory
-from twisted.internet import reactor
 from sllurp.log import init_logging
 
 from wtp.core import WTPServer
 from wtp.connection import WTPConnection
 import wtp.constants as consts
-
-def test_send():
-    print(factory.protocols)
-    c.send(b"test")
 
 init_logging()
 

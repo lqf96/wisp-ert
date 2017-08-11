@@ -1,13 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 import struct
 
-from wtp.constants import WTP_ERR_INVALID_SIZE
+import wtp.constants as consts
 from wtp.error import WTPError
-
-# EPC memory bank
-RFID_MB_EPC = 0x01
-# User memory bank
-RFID_MB_USER = 0x03
 
 def read_opspec(data_size, opspec_id=0):
     """
@@ -20,14 +15,12 @@ def read_opspec(data_size, opspec_id=0):
     # Data size must be multiple of 2
     n_words, remainder = divmod(data_size, 2)
     if remainder!=0:
-        raise WTPError(WTP_ERR_INVALID_SIZE)
+        raise WTPError(consts.WTP_ERR_INVALID_SIZE)
     # Read OpSpec
     return {
         "OpSpecID": opspec_id,
-        # ?
-        "M": 1,
         # Memory bank
-        "MB": RFID_MB_USER,
+        "MB": consts.RFID_MB_USER,
         # Read position
         "WordPtr": 0,
         # Access password (Dummy)
@@ -52,10 +45,8 @@ def write_opspec(data, opspec_id=0):
     # BlockWrite OpSpec
     return {
         "OpSpecID": opspec_id,
-        # ?
-        "M": 1,
         # Memory bank
-        "MB": RFID_MB_USER,
+        "MB": consts.RFID_MB_USER,
         # Write position
         "WordPtr": 0,
         # Access password (Dummy)
@@ -66,7 +57,7 @@ def write_opspec(data, opspec_id=0):
         "WriteDataWordCount": n_words
     }
 
-def wisp_target_info(wisp_id):
+def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
     """
     Generate LLRP RFID target information from WISP ID.
 
@@ -75,15 +66,17 @@ def wisp_target_info(wisp_id):
     """
     return {
         # Memory bank
-        "MB": RFID_MB_EPC,
+        "MB": consts.RFID_MB_EPC,
+        # ?
+        "M": 1,
         # Beginning address of EPC data in EPC memory bank
         "Pointer": 0x20,
         # Tag data mask
-        "TagMask": b"\xff\xff",
+        "TagMask": b"\xff"*struct.calcsize("<BH"),
         # Length of mask in bits
         "MaskBitCount": 16,
         # Tag data for selection
-        "TagData": struct.pack(">H", wisp_id),
+        "TagData": struct.pack("<BH", wisp_class, wisp_id),
         # Length of data in bits
         "DataBitCount": 16
     }

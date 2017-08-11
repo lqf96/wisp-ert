@@ -43,3 +43,18 @@ WTP_ERR_INVALID_CHECKSUM = 0x14
 WTP_ERR_UNSUPPORT_OP = 0x15
 # Invalid size
 WTP_ERR_INVALID_SIZE = 0x16
+
+# === Miscellaneous ===
+# WTP max sequence number
+WTP_SEQ_MAX = 0x10000
+
+# WISP class
+WISP_CLASS = 0x10
+
+# Maximum OpSpecs in 1 AccessSpec
+LLRP_N_OPSPECS_MAX = 8
+
+# EPC memory bank
+RFID_MB_EPC = 0x01
+# User memory bank
+RFID_MB_USER = 0x03

@@ -1,7 +1,7 @@
 from __future__ import absolute_import, unicode_literals
 from binascii import unhexlify
 from collections import Container
-from twisted.internet import reactor
+from twisted.internet import reactor as inet_reactor
 from sllurp.llrp import LLRP_PORT
 
 import wtp.constants as consts
@@ -12,7 +12,7 @@ from wtp.error import WTPError
 
 class WTPServer(EventTarget):
     """ WTP server type. """
-    def __init__(self, llrp_factory):
+    def __init__(self, llrp_factory, reactor=inet_reactor):
         # Initialize base classes
         super(WTPServer, self).__init__()
         # LLRP factory
@@ -21,24 +21,26 @@ class WTPServer(EventTarget):
         self._last_epc = {}
         # WTP connections
         self._connections = {}
-    def start(self, server, port=LLRP_PORT):
+        # Reactor
+        self._reactor = reactor
+        # Add tag report callback
+        llrp_factory.addTagReportCallback(self._handle_tag_report)
+    def start(self, server, port=LLRP_PORT, reactor=inet_reactor):
         """
         Start the WTP server.
 
-        :param ip: Reader IP
+        :param server: Reader
         :param port: Reader port
         """
-        # Add tag report callback
-        self._llrp_factory.addTagReportCallback(self._handle_tag_report)
         # Connect to reader
-        reactor.connectTCP(server, port, self._llrp_factory)
+        self._reactor.connectTCP(server, port, self._llrp_factory)
         # Run reactor
-        reactor.run()
+        self._reactor.run()
     def stop(self):
         """
         Stop the WTP server.
         """
-        reactor.stop()
+        self._reactor.stop()
     def _handle_tag_report(self, llrp_msg):
         """
         Handle LLRP tag report from reader.
@@ -50,25 +52,29 @@ class WTPServer(EventTarget):
             # Get and parse EPC data
             epc_data = unhexlify(report["EPC-96"])
             stream = ChecksumStream(epc_data)
-            wisp_id = stream.read_stream("H")
-            # Temporaily block non-WISP device
-            if wisp_id!=0:
+            wisp_class, wisp_id = stream.read_data("BH")
+            # Ignore non-WISP devices
+            if wisp_class!=consts.WISP_CLASS:
                 continue
             # Read and handle WTP packets from EPC data only when EPC changed
             if self._last_epc.get(wisp_id)!=epc_data:
                 self._last_epc[wisp_id] = epc_data
                 self._handle_packets(stream, wisp_id)
-            # OpSpec result present
-            opspec_result = report.get("OpSpecResult")
-            if opspec_result:
+            # OpSpec results
+            opspec_results = report.get("OpSpecResult")
+            if not opspec_results:
+                continue
+            # Ensure OpSpec results is container
+            if not isinstance(opspec_results, Container):
+                opspec_results = [opspec_results]
+            # TODO: Write/BlockWrite result report
+            for opspec_result in opspec_results:
                 opspec_id = opspec_result["OpSpecID"]
                 # Read data result
                 read_data = opspec_result.get("ReadData")
                 if read_data:
                     stream = ChecksumStream(read_data, checksum_func=xor_checksum)
                     self._handle_packets(stream, wisp_id)
-            # TODO: Send WTP packets?
-            pass
     def _handle_packets(self, stream, wisp_id):
         """
         Handle WTP packets.
@@ -81,8 +87,7 @@ class WTPServer(EventTarget):
         # Read packets
         while True:
             # Packet type
-            packet_type = stream.read_stream("B")
-            print(packet_type)
+            packet_type = stream.read_data("B")
             # No more packets
             if packet_type==consts.WTP_PKT_END:
                 break
@@ -92,7 +97,9 @@ class WTPServer(EventTarget):
                 if not connection:
                     connection = self._connections[wisp_id] = WTPConnection(
                         server=self,
-                        wisp_id=wisp_id
+                        wisp_id=wisp_id,
+                        checksum_func=xor_checksum,
+                        checksum_type="<B"
                     )
                 # Trigger connect event
                 self.trigger("connect", connection)
@@ -104,22 +111,11 @@ class WTPServer(EventTarget):
             # Close connection
             if packet_type==consts.WTP_PKT_CLOSE:
                 # Remove connection object when fully closed
-                if connection._uplink_state==consts.WTP_STATE_CLOSED and connection._downlink_state==consts.WTP_STATE_CLOSED:
+                if connection.uplink_state==consts.WTP_STATE_CLOSED and connection.downlink_state==consts.WTP_STATE_CLOSED:
                     del self._connections[wisp_id]
-    def _set_timeout(self, time, func, *args, **kwargs):
+    def _send_access_spec(self, wisp_id, opspecs):
         """
-        Call function after given timeout.
-
-        :param time: Timeout
-        :param func: Function to call
-        :param args: Arguments
-        :param kwargs: Keyword arguments
-        :returns: A deferred object which will be resolved when the function is executed
-        """
-        return reactor.callLater(time, func, *args, **kwargs)
-    def _send_opspecs(self, wisp_id, opspecs):
-        """
-        Send OpSpecs to WISP.
+        Send AccessSpec to WISP.
 
         :param wisp_id: WISP ID
         :param opspecs: OpSpecs to send
@@ -127,13 +123,13 @@ class WTPServer(EventTarget):
         # Ensure OpSpecs is a list
         if not isinstance(opspecs, Container):
             opspecs = [opspecs]
-        # Sending multiple OpSpecs at once
-        if len(opspecs)>1:
-            raise WTPError(consts.WTP_ERR_UNSUPPORT_OP)
-        # TODO: nextAccess
+        # Get LLRP client
         proto = self._llrp_factory.protocols[0]
-        proto.startAccess(
-            param=opspecs[0],
-            accessStopParam=access_stop_param(),
+        # Do next access
+        return proto.nextAccess(
+            stopSpecPar=access_stop_param(),
+            # Use WISP ID as AccessSpec ID
+            accessSpecID=wisp_id,
+            param=opspecs,
             target=wisp_target_info(wisp_id)
         )

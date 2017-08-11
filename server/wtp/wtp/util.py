@@ -1,6 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 import struct
 from io import BytesIO
+from contextlib import contextmanager
+from six import text_type
 
 from wtp.error import WTPError
 from wtp.constants import WTP_ERR_INVALID_CHECKSUM
@@ -59,7 +61,7 @@ class ChecksumStream(BytesIO):
         # Checksum function
         self._checksum_func = kwargs.pop("checksum_func", None)
         # Checksum data type
-        self._checksum_type = kwargs.pop("checksum_type", ">B")
+        self._checksum_type = kwargs.pop("checksum_type", "<B")
         # Begin checksum position
         self._begin_pos = 0
         # Initialize base class
@@ -81,11 +83,11 @@ class ChecksumStream(BytesIO):
         buffer_slice = self.getvalue()[self._begin_pos:end_pos]
         calc_checksum = self._checksum_func(buffer_slice)
         # Read checksum
-        read_checksum = self.read_stream(self._checksum_type)
+        read_checksum = self.read_data(self._checksum_type)
         # Throw checksum error if validation failed
         if read_checksum!=calc_checksum:
             raise WTPError(WTP_ERR_INVALID_CHECKSUM)
-    def read_stream(self, fmt, endian="<"):
+    def read_data(self, fmt, endian="<"):
         """
         Read binary data from stream with given format.
 
@@ -100,7 +102,7 @@ class ChecksumStream(BytesIO):
             return result[0]
         else:
             return result
-    def write_stream(self, fmt, *args, **kwargs):
+    def write_data(self, fmt, *args, **kwargs):
         """
         Write binary data to stream with given format.
 
@@ -126,8 +128,126 @@ class ChecksumStream(BytesIO):
 def xor_checksum(buf):
     """
     Xor checksum function.
+
+    :param buf: Buffer to calculate checksum
     """
     checksum = 0
     for byte in buf:
         checksum ^= byte
     return checksum
+
+class CyclicInt(object):
+    """ Cyclic integer type. """
+    def __init__(self, value, radix):
+        # Value
+        self._value = value%radix
+        # Radix
+        self._radix = radix
+    def __eq__(self, other):
+        """
+        Compare equality of cyclic integer with another value.
+
+        :param other: Other value
+        """
+        # Cyclic integer
+        if isinstance(other, CyclicInt):
+            return self._value==other._value and self._radix==other._radix
+        # Other types
+        else:
+            return self._value==int(other)
+    def __lt__(self, other):
+        # TODO: Lower than
+        pass
+    def __gt__(self, other):
+        # TODO: Greater than
+        pass
+    def __add__(self, other):
+        """
+        Add cyclic integer with another value.
+
+        :param other: Other value
+        """
+        # For cyclic integer, check its radix
+        if isinstance(other, CyclicInt):
+            if self._radix!=other._radix:
+                raise ValueError("Attempt to add another cyclic integer with different radix.")
+        # Return new cyclic integer
+        return CyclicInt(self._value+int(other), self._radix)
+    def __radd__(self, other):
+        """
+        Add cyclic integer with another value.
+        (Proxied to self.__add__)
+
+        :param other: Other value
+        """
+        return self.__add__(other)
+    def __int__(self):
+        """
+        Convert cyclic integer to built-in integer.
+        """
+        return self._value
+    def __index__(self):
+        """
+        Convert cyclic integer to collection index.
+        (Proxied to self.__int__)
+        """
+        return self.__int__()
+    def __repr__(self):
+        """
+        Representation of cyclic integer.
+        """
+        return "CyclicInt(%d, %d)" % (self._value, self._radix)
+
+class CyclicRange(object):
+    """ Cyclic range type. """
+    def __init__(self, x, radix, y=None, size=None):
+        # Range end
+        if not y and not size:
+            raise ValueError("Either y or size must be given to construct cyclic range.")
+        y = y if y else x+size
+        # Range bounds
+        self._x = x%radix
+        self._y = y%radix
+        # Radix
+        self._radix = radix
+    def __eq__(self, other):
+        """
+        Check if other value equals with this cyclic range.
+
+        :param other: Other value
+        :returns: Whether two values equal or not
+        """
+        if isinstance(other, CyclicRange):
+            return self._x==other._x and self._y==other._y and self._radix==other._radix
+        else:
+            return False
+    def __contains__(self, other):
+        """
+        Check if given value, cyclic integer or cyclic range is within this cyclic range.
+
+        :param other: Other value
+        """
+        # Cyclic range and cyclic integer
+        if isinstance(other, (CyclicRange, CyclicInt)):
+            # Check its radix
+            if other._radix!=self._radix:
+                raise ValueError("Parameter radix mismatch.")
+        # TODO: Cyclic range
+        if isinstance(other, CyclicRange):
+            pass
+        # TODO: Cyclic integer or other values
+        else:
+            pass
+    @contextmanager
+    def compare_in_range(self):
+        """
+        Compare two cyclic integer within given range.
+        """
+        # Push current range into contexts
+        self._cmp_ctx.append(self)
+        # Enter context
+        yield
+        # Pop current range from contexts
+        self._cmp_ctx.pop()
+    # Compare contexts
+    _cmp_ctx = []

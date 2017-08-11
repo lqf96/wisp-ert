@@ -1,44 +1,66 @@
 from __future__ import absolute_import, unicode_literals
 import functools
+from six.moves import range
 from twisted.internet.defer import Deferred
 
 import wtp.constants as consts
 from wtp.util import EventTarget, ChecksumStream
-from wtp.llrp_util import write_opspec
+from wtp.transmission import SlidingWindowTxControl, SlidingWindowRxControl
+from wtp.llrp_util import read_opspec, write_opspec
 
 class WTPConnection(EventTarget):
-    """ WTP connection type. """
-    def __init__(self, server, wisp_id):
+    """ WTP connection class. """
+    def __init__(self, server, wisp_id, checksum_func, checksum_type):
         # Initialize base classes
         super(WTPConnection, self).__init__()
         # WTP server reference
-        self._server = server
+        self.server = server
         # WISP ID
-        self._wisp_id = wisp_id
+        self.wisp_id = wisp_id
         # Downlink and uplink state
-        self._uplink_state = consts.WTP_STATE_CLOSED
-        self._downlink_state = consts.WTP_STATE_CLOSED
-        # Send and receive sequence number
-        self._send_seq = 0
-        self._recv_seq = 0
-        # Sending messages and control packets queue
-        self._send_msgs = [b""]
-        self._send_packets = []
-        # Sending message begin position and length
-        self._send_msg_begin = 0
-        self._send_msg_size = 0
-        # Received messages and deferreds
+        self.uplink_state = consts.WTP_STATE_CLOSED
+        self.downlink_state = consts.WTP_STATE_CLOSED
+        # Transmission control tools
+        self._rx_ctrl = SlidingWindowRxControl(
+            write_size=24,
+            window_size=64,
+            checksum_func=checksum_func,
+            checksum_type=checksum_type,
+            timeout=0.1
+        )
+        self._tx_ctrl = SlidingWindowTxControl(
+            window_size=64
+        )
+        # Receive messages and deferreds
         self._recv_msgs = []
         self._recv_deferreds = []
-        # Receiving message buffer
-        self._recv_msg_buf = None
-        # Receiving message begin position and length
-        self._recv_msg_begin = 0
-        self._recv_msg_size = 0
-        # Write operation pending flag
-        self._write_pending = False
-        # Current OpSpec ID
-        self._current_opspec_id = 1
+        # Pending Read OpSpecs
+        self._read_opspecs = []
+        # Ongoing AccessSpec flag
+        self._ongoing_access_spec = False
+        # Maximum OpSpecs in one AccessSpec
+        self._n_opspecs_max = 8
+    def _build_header(self, packet_type):
+        """
+        Build WTP packet header for sending.
+
+        :param packet_type: WTP packet type
+        :returns: Checksum stream containing WTP packet header
+        """
+        stream = ChecksumStream()
+        # Write packet type
+        stream.write_data("B", packet_type)
+        return stream
+    def _build_ack(self):
+        """
+        Build WTP acknowledgement packet.
+
+        :returns: WTP acknowledgement packet data
+        """
+        stream = self._build_header(consts.WTP_PKT_ACK)
+        # Sequence number
+        stream.write_data("H", self._rx_ctrl.seq_num)
+        return stream.getvalue()
     def _handle_packet(self, stream, packet_type):
         """
         Handle WTP packet for current connection.
@@ -50,36 +72,18 @@ class WTPConnection(EventTarget):
         # Drop packet with unknown packet type
         if handler:
             handler(self, stream)
-    def _handle_data_packet(self, stream):
-        """
-        Handle data packet (Begin message and continue message packet).
-
-        :param stream: Data stream containing packet data
-        """
-        # Read offset and payload size
-        offset, payload_size = stream.read_stream("HB")
-        # Read payload
-        payload = stream.read(payload_size)
-        # Validate checksum
-        stream.validate_checksum()
-        # Return offset and payload
-        return offset, payload
     def _handle_open(self, stream):
         """
         Handle WTP open packet.
 
         :param stream: Data stream containing open packet
         """
-        print("Open connection")
-        # Read connection mode
-        mode = stream.read_stream("B")
         # Validate checksum
         stream.validate_checksum()
-        # Update connection information
-        self._reliable = True
-        self._uplink_state = consts.WTP_STATE_OPENED
+        # Update connection state
+        self.uplink_state = consts.WTP_STATE_OPENED
         # Send Ack message
-        self._send_ack()
+        self._tx_ctrl.add_packet(self._build_ack())
     def _handle_close(self, stream):
         """
         Handle WTP close packet.
@@ -89,14 +93,14 @@ class WTPConnection(EventTarget):
         # Validate checksum
         stream.validate_checksum()
         # Update connection information
-        self._uplink_state = WTP_STATE_CLOSED
+        self.uplink_state = WTP_STATE_CLOSED
         # Trigger half close or close event
-        if self._downlink_state==WTP_STATE_OPENED:
+        if self.downlink_state==WTP_STATE_OPENED:
             self.trigger("half-close")
-        elif self._downlink_state==WTP_STATE_CLOSED:
+        elif self.downlink_state==WTP_STATE_CLOSED:
             self.trigger("close")
         # Send Ack message
-        self._send_ack()
+        self._tx_ctrl.add_packet(self._build_ack())
     def _handle_ack(self, stream):
         """
         Handle WTP acknowledgement packet.
@@ -104,12 +108,12 @@ class WTPConnection(EventTarget):
         :param stream: Data stream containing acknowledgement packet
         """
         # Read acknowledged bytes
-        acked = stream.read_stream("H")
+        seq_num = stream.read_data("H")
         # Validate checksum
         stream.validate_checksum()
-        # TODO: What to do next
-        pass
-    def _handle_msg_data(self, stream, msg_begin):
+        # Handle acknowledgement with tranmit control tool
+        self._tx_ctrl.handle_ack(seq_num)
+    def _handle_data_packet(self, stream, msg_begin):
         """
         Handle WTP message data packet.
 
@@ -117,71 +121,57 @@ class WTPConnection(EventTarget):
         :param begin: Is this packet a begin message packet?
         """
         # Read message size
-        msg_size = stream.read_stream("H") if msg_begin else self._recv_msg_size
-        # Read offset and payload size
-        offset, payload_size = stream.read_stream("HB")
+        msg_size = stream.read_data("H") if msg_begin else None
+        # Read sequence number and payload size
+        seq_num, payload_size = stream.read_data("HB")
         # Read payload
         payload = stream.read(payload_size)
         # Validate checksum
         stream.validate_checksum()
-        # Message end
-        msg_end = self._recv_msg_begin+self._recv_msg_size
-        # Check if packet begins at acknowledged position
-        if offset!=self._recv_seq:
-            return
-        # For begin of the message
-        if begin_msg:
-            # Check if new message begins at the ent of old message
-            if offset!=msg_end:
-                return
-            # Check if payload size is greater than message size
-            if payload_size>msg_size:
-                return
-            # Update message begin and message size
-            self._recv_msg_begin = offset
-            self._recv_msg_size = msg_size
-            # Update message end
-            msg_end = offset+msg_size
-            # Reset received message buffer
-            self._recv_msg_buf = b""
-        else:
-            # Check if end of payload exceeds message data range
-            if offset+payload_size>msg_end:
-                return
-        # Update sequence number
-        self._recv_seq += payload_size
-        # Append data to buffer
-        self._recv_msg_buf += payload
-        # End of message
-        if offset+payload_sie==self._recv_msg_begin+self._recv_msg_size:
-            if len(self._recv_deferreds)>0:
-                self._recv_deferreds.pop(0).callback(self._recv_msg_buf)
-            else:
-                self._recv_msgs.append(self._recv_msg_buf)
+        # Handle received data with receive control tool
+        new_msgs = self._rx_ctrl.handle_packet(seq_num, payload, msg_size)
+        # Resolve remaining deferreds
+        while self._recv_deferreds and new_msgs:
+            d = self._recv_deferreds.pop(0)
+            d.callback(new_msgs.pop(0))
+        # Store remaining messages
+        if new_msgs:
+            self._recv_msgs += new_msgs
         # Send acknowledgement
-        self._send_ack()
+        self._tx_ctrl.add_packet(self._build_ack())
     def _handle_req_uplink(self, stream):
         """
         Handle WTP request uplink packet.
 
         :param stream: Data stream containing request uplink packet
         """
-        # Number of Read operations requested
-        n_reads = stream.read_stream("B")
+        # Number of read operations and read OpSpec size
+        n_reads, read_size = stream.read_data("BB")
         # Validate checksum
         stream.validate_checksum()
-        # Send Read OpSpec
-        self._send_opspec(read_opspec(24))
-    def send(self, msg):
+        # Add read OpSpecs
+        for _ in range(n_reads):
+            self._read_opspecs.append(read_opspec(read_size))
+        # Request sending AccessSpec
+        self._request_access_spec()
+    def _request_access_spec(self):
+        """
+        Request sending AccessSpec to WISP.
+        """
+        # Ongoing AccessSpec
+        if self._ongoing_access_spec:
+            return
+        #
+    def send(self, msg_data):
         """
         Send a message to WISP.
 
-        :param msg: Message data
+        :param msg_data: Message data
         """
-        # Append message to send
-        self._send_msgs.append(msg)
-        # Send write OpSpec
-        self._send_write_opspec()
+        # Add message to transmit control
+        self._tx_ctrl.add_msg(msg_data)
+        # Request sending AccessSpec
+        self._request_access_spec()
     def recv(self):
         """
         Receive a message from WISP.
@@ -196,58 +186,17 @@ class WTPConnection(EventTarget):
         else:
             self._recv_deferreds.append(d)
         return d
-    def _send_read_opspec(self):
-        self._server._send_opspecs(self._wisp_id, [read_opspec(24, self._current_opspec_id)])
-        self._current_opspec_id += 1
-    def _do_send_write_opspec(self):
-        self._write_pending = False
-        send_data = ChecksumStream()
-        # Send all control packets
-        while self._send_packets and len(send_data)<24:
-            send_data.begin_checksum()
-            send_data.write(self._send_packets.pop(0))
-            send_data.write_checksum()
-        # Update next sending message
-        if self._send_seq==self._send_msg_begin+self._send_msg_size:
-            self._send_msgs.pop(0)
-            self._send_msg_begin = self._send_seq
-            self._send_msg_size = len(self._send_msgs[0])
-            # Build begin data packet
-            send_data.begin_checksum()
-            send_data.write_stream("BH", consts.WTP_PKT_BEGIN_MSG, self._send_msg_size)
-        else:
-            send_data.write_stream("B", consts.WTP_PKT_CONT_MSG)
-        # Build data packet
-        send_data.write_stream("HB", self._send_seq, 8)
-        # Append data
-        begin = self._send_seq-self._send_msg_begin
-        end = min(begin+8, len(self._send_msgs[0]))
-        send_data.write(self._send_msgs[0][begin:end])
-        # Append checksum
-        send_data.write_checksum()
-        # Terminate symbol
-        send_data.write_stream("B", consts.WTP_PKT_END)
-        # Send write opspec
-        self._server._send_opspecs(self._wisp_id, [
-            write_opspec(send_data.getvalue(), self._current_opspec_id)
-        ])
-        self._current_opspec_id += 1
-        # Continue send data
-        if self._send_packets or self._send_msgs:
-            self._send_write_opspec()
-    def _send_write_opspec(self):
-        # Pending write operation
-        if self._write_pending:
-            return
-        self._write_pending = True
-        # Wait for 50ms and send
-        self._server._set_timeout(0.05, self._do_send_write_opspec)
+    def close(self):
+        """
+        Close WTP connection with WISP.
+        """
+        pass
     # Packet handlers
     _pkt_handler = {
         consts.WTP_PKT_OPEN: _handle_open,
         consts.WTP_PKT_CLOSE: _handle_close,
         consts.WTP_PKT_ACK: _handle_ack,
-        consts.WTP_PKT_BEGIN_MSG: functools.partial(_handle_msg_data, msg_begin=True),
-        consts.WTP_PKT_CONT_MSG: functools.partial(_handle_msg_data, msg_begin=False),
+        consts.WTP_PKT_BEGIN_MSG: functools.partial(_handle_data_packet, msg_begin=True),
+        consts.WTP_PKT_CONT_MSG: functools.partial(_handle_data_packet, msg_begin=False),
         consts.WTP_PKT_REQ_UPLINK: _handle_req_uplink
     }
