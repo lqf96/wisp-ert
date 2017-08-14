@@ -26,7 +26,8 @@ class WTPConnection(EventTarget):
             window_size=64,
             checksum_func=checksum_func,
             checksum_type=checksum_type,
-            timeout=0.1
+            timeout=0.1,
+            request_access_spec=self.request_access_spec
         )
         self._tx_ctrl = SlidingWindowTxControl(
             window_size=64
@@ -34,8 +35,10 @@ class WTPConnection(EventTarget):
         # Receive messages and deferreds
         self._recv_msgs = []
         self._recv_deferreds = []
-        # Pending Read OpSpecs
-        self._read_opspecs = []
+        # Sending deferreds
+        self._send_deferreds = []
+        # Sizes of pending Read OpSpecs
+        self._read_opspec_sizes = []
         # Ongoing AccessSpec flag
         self._ongoing_access_spec = False
     def _build_header(self, packet_type):
@@ -110,7 +113,10 @@ class WTPConnection(EventTarget):
         # Validate checksum
         stream.validate_checksum()
         # Handle acknowledgement with tranmit control tool
-        self._tx_ctrl.handle_ack(seq_num)
+        n_sent_msgs = self._tx_ctrl.handle_ack(seq_num)
+        # Resolve send deferreds
+        for _ in range(n_sent_msgs):
+            self._send_deferreds.pop(0).callback(None)
     def _handle_data_packet(self, stream, msg_begin):
         """
         Handle WTP message data packet.
@@ -148,8 +154,7 @@ class WTPConnection(EventTarget):
         # Validate checksum
         stream.validate_checksum()
         # Add read OpSpecs
-        for _ in range(n_reads):
-            self._read_opspecs.append(read_opspec(read_size))
+        self._read_opspec_sizes += [read_size]*n_reads
         # Request sending AccessSpec
         self._request_access_spec()
     def _request_access_spec(self):
@@ -160,11 +165,31 @@ class WTPConnection(EventTarget):
         if self._ongoing_access_spec:
             return
         self._ongoing_access_spec = True
-        # TODO: Collect OpSpecs for sending
+        # Collect OpSpecs for sending
         opspecs = []
+        opspec_id = 0
+        while True:
+            # Add a Read OpSpec
+            if self._read_opspec_sizes:
+                opspecs.append(read_opspec(self._read_opspec_sizes.pop(0), opspec_id))
+                # Update OpSpec ID
+                opspec_id += 1
+            if opspec_id>=consts.LLRP_N_OPSPECS_MAX:
+                break
+            # Add a Write OpSpec
+            write_data = self._tx_ctrl.get_write_data()
+            if write_data:
+                opspecs.append(write_opspec(write_data, opspec_id))
+                # Update OpSpec ID
+                opspec_id += 1
+            if opspec_id>=consts.LLRP_N_OPSPECS_MAX:
+                break
+            # No more OpSpec to add
+            if not self._read_opspec_sizes and not write_data:
+                break
         # Send AccessSpec and schedule next sending
         if opspecs:
-            d = self.server._send_access_spec(wisp_id, opspecs)
+            d = self.server._send_access_spec(self.wisp_id, opspecs)
             d.addCallback(lambda _: self._request_access_spec())
         # No more OpSpecs to send, stop
         else:
@@ -179,6 +204,10 @@ class WTPConnection(EventTarget):
         self._tx_ctrl.add_msg(msg_data)
         # Request sending AccessSpec
         self._request_access_spec()
+        # Add a new deferred
+        d = Deferred()
+        self._send_deferreds.append(d)
+        return d
     def recv(self):
         """
         Receive a message from WISP.
@@ -197,6 +226,7 @@ class WTPConnection(EventTarget):
         """
         Close WTP connection with WISP.
         """
+        # TODO: Close connection
         pass
     # Packet handlers
     _pkt_handler = {

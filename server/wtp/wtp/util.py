@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 import struct
+from functools import total_ordering
 from io import BytesIO
 from contextlib import contextmanager
 from six import text_type
@@ -136,6 +137,17 @@ def xor_checksum(buf):
         checksum ^= byte
     return checksum
 
+def _check_radix(x, y):
+    """
+    Check the radix of two cyclic integers or ranges.
+
+    :param x, y: Cyclic integer or range
+    :raises: ValueError if radix of x and y mismatch
+    """
+    if x._radix!=y._radix:
+        raise ValueError("Radix mismatch.")
+
+@total_ordering
 class CyclicInt(object):
     """ Cyclic integer type. """
     def __init__(self, value, radix):
@@ -151,16 +163,39 @@ class CyclicInt(object):
         """
         # Cyclic integer
         if isinstance(other, CyclicInt):
-            return self._value==other._value and self._radix==other._radix
+            _check_radix(self, other)
+            return self._value==other._value
         # Other types
         else:
             return self._value==int(other)
     def __lt__(self, other):
-        # TODO: Lower than
-        pass
+        # Cyclic integer
+        if isinstance(other, CyclicInt):
+            _check_radix(self, other)
+            # Get zero point context
+            zero = self._zero_ctx()
+            _check_radix(self, zero)
+            # Do comparison
+            rel_self = (self._value-zero._value)%self._radix
+            rel_other = (other._value-zero._value)%self._radix
+            return rel_self<rel_other
+        # Other types
+        else:
+            return self._value<int(other)
     def __gt__(self, other):
-        # TODO: Greater than
-        pass
+        # Cyclic integer
+        if isinstance(other, CyclicInt):
+            _check_radix(self, other)
+            # Get zero point context
+            zero = self._zero_ctx()
+            _check_radix(self, zero)
+            # Do comparison
+            rel_self = (self._value-zero._value)%self._radix
+            rel_other = (other._value-zero._value)%self._radix
+            return rel_self>rel_other
+        # Other types
+        else:
+            return self._value>int(other)
     def __add__(self, other):
         """
         Add cyclic integer with another value.
@@ -169,8 +204,7 @@ class CyclicInt(object):
         """
         # For cyclic integer, check its radix
         if isinstance(other, CyclicInt):
-            if self._radix!=other._radix:
-                raise ValueError("Attempt to add another cyclic integer with different radix.")
+            _check_radix(self, other)
         # Return new cyclic integer
         return CyclicInt(self._value+int(other), self._radix)
     def __radd__(self, other):
@@ -181,6 +215,22 @@ class CyclicInt(object):
         :param other: Other value
         """
         return self.__add__(other)
+    def __sub__(self, other):
+        """
+        Subtract a value from self.
+
+        :param other: Other value
+        """
+        # For cyclic integer, check its radix
+        if isinstance(other, CyclicInt):
+            _check_radix(self, other)
+        # Return new cyclic integer
+        return CyclicInt(self._value-int(other), self._radix)
+    def __neg__(self):
+        """
+        Get supplementary cyclic integer.
+        """
+        return CyclicInt(-self._value, self._radix)
     def __int__(self):
         """
         Convert cyclic integer to built-in integer.
@@ -197,6 +247,32 @@ class CyclicInt(object):
         Representation of cyclic integer.
         """
         return "CyclicInt(%d, %d)" % (self._value, self._radix)
+    @classmethod
+    def _zero_ctx(cls):
+        """
+        Get current zero point context.
+
+        :returns: Current zero point context
+        :raises: Exception if not in a zero point context
+        """
+        if cls._zero_ctx_stack:
+            return cls._zero_ctx_stack[-1]
+        # Not in zero point context
+        else:
+            raise Exception("Not in a zero point context.")
+    @contextmanager
+    def as_zero(self):
+        """
+        Enter a context with this cyclic integer as zero point.
+        """
+        # Add to contexts stack
+        self._zero_ctx_stack.append(self)
+        # Enter context
+        yield
+        # Remove from stack
+        self._zero_ctx_stack.pop()
+    # Zero point contexts stack
+    _zero_ctx_stack = []
 
 class CyclicRange(object):
     """ Cyclic range type. """
@@ -218,7 +294,8 @@ class CyclicRange(object):
         :returns: Whether two values equal or not
         """
         if isinstance(other, CyclicRange):
-            return self._x==other._x and self._y==other._y and self._radix==other._radix
+            _check_radix(self, other)
+            return self._x==other._x and self._y==other._y
         else:
             return False
     def __contains__(self, other):
@@ -229,25 +306,21 @@ class CyclicRange(object):
         """
         # Cyclic range and cyclic integer
         if isinstance(other, (CyclicRange, CyclicInt)):
-            # Check its radix
-            if other._radix!=self._radix:
-                raise ValueError("Parameter radix mismatch.")
-        # TODO: Cyclic range
+            # Check radix
+            _check_radix(self, other)
+        # Radix
+        radix = self._radix
+        # Range boundaries
+        self_x = CyclicInt(self._x, radix)
+        self_y = CyclicInt(self._y, radix)
+        # Cyclic range
         if isinstance(other, CyclicRange):
-            pass
+            # Range boundaries
+            other_x = CyclicInt(other._x, radix)
+            other_y = CyclicInt(other._y, radix)
+            # Do comparison
+            with self_x.as_zero():
+                return other_y>=other_x and self_y>=other_y
         # TODO: Cyclic integer or other values
         else:
             pass
-    @contextmanager
-    def compare_in_range(self):
-        """
-        Compare two cyclic integer within given range.
-        """
-        # Push current range into contexts
-        self._cmp_ctx.append(self)
-        # Enter context
-        yield
-        # Pop current range from contexts
-        self._cmp_ctx.pop()
-    # Compare contexts
-    _cmp_ctx = []

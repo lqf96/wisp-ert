@@ -1,6 +1,8 @@
-from __future__ import unicode_literals, absolute_import
+from __future__ import absolute_import, unicode_literals
 
-# Core module
-#from wtp.core import WTPServer
+# Server module
+from wtp.server import WTPServer
 # Connection module
-#from wtp.connection import WTPConnection
+from wtp.connection import WTPConnection
+# Error module
+from wtp.error import WTPError
