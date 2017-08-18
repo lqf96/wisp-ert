@@ -1,8 +1,8 @@
 from __future__ import absolute_import, unicode_literals
 from binascii import unhexlify
-from collections import Container
 from twisted.internet import reactor as inet_reactor
-from sllurp.llrp import LLRP_PORT
+from twisted.internet.defer import Deferred
+from sllurp.llrp import LLRPClientFactory, LLRP_PORT
 
 import wtp.constants as consts
 from wtp.util import EventTarget, ChecksumStream, xor_checksum
@@ -12,17 +12,24 @@ from wtp.error import WTPError
 
 class WTPServer(EventTarget):
     """ WTP server type. """
-    def __init__(self, llrp_factory, reactor=inet_reactor):
+    def __init__(self, antennas=[1], reactor=inet_reactor):
         # Initialize base classes
         super(WTPServer, self).__init__()
         # LLRP factory
-        self._llrp_factory = llrp_factory
+        llrp_factory = self._llrp_factory = LLRPClientFactory(
+            antennas=antennas,
+            report_every_n_tags=1,
+            modulation="WISP5",
+            start_inventory=True
+        )
         # Last seen EPC data
         self._last_epc = {}
         # WTP connections
         self._connections = {}
         # Reactor
         self._reactor = reactor
+        # AccessSpec deferreds
+        self._access_spec_deferreds = {}
         # Add tag report callback
         llrp_factory.addTagReportCallback(self._handle_tag_report)
     def start(self, server, port=LLRP_PORT, reactor=inet_reactor):
@@ -58,16 +65,20 @@ class WTPServer(EventTarget):
                 continue
             # Read and handle WTP packets from EPC data only when EPC changed
             if self._last_epc.get(wisp_id)!=epc_data:
+                print(bytearray(epc_data))
                 self._last_epc[wisp_id] = epc_data
                 self._handle_packets(stream, wisp_id)
             # OpSpec results
             opspec_results = report.get("OpSpecResult")
             if not opspec_results:
                 continue
+            # Resolve pending AccessSpec deferreds
+            d = self._access_spec_deferreds.pop(wisp_id, None)
+            if d:
+                d.callback(opspec_results)
             # Ensure OpSpec results is container
-            if not isinstance(opspec_results, Container):
+            if not isinstance(opspec_results, list):
                 opspec_results = [opspec_results]
-            # TODO: Write/BlockWrite result report
             for opspec_result in opspec_results:
                 opspec_id = opspec_result["OpSpecID"]
                 # Read data result
@@ -92,27 +103,29 @@ class WTPServer(EventTarget):
             if packet_type==consts.WTP_PKT_END:
                 break
             # Open connection
-            if packet_type==consts.WTP_PKT_OPEN:
-                # Create connection object
+            elif packet_type==consts.WTP_PKT_OPEN:
+                # Do nothing if connection already established
                 if not connection:
+                    # Create new connection
                     connection = self._connections[wisp_id] = WTPConnection(
                         server=self,
                         wisp_id=wisp_id,
                         checksum_func=xor_checksum,
                         checksum_type="<B"
                     )
-                # Trigger connect event
-                self.trigger("connect", connection)
+                    # Handle packet in connection
+                    connection._handle_packet(stream, packet_type)
+                    # Trigger connect event
+                    self.trigger("connect", connection)
             # Do not process packets without corresponding connection
-            if not connection:
-                break
-            # Handle packet in connection
-            connection._handle_packet(stream, packet_type)
-            # Close connection
-            if packet_type==consts.WTP_PKT_CLOSE:
-                # Remove connection object when fully closed
-                if connection.uplink_state==consts.WTP_STATE_CLOSED and connection.downlink_state==consts.WTP_STATE_CLOSED:
-                    del self._connections[wisp_id]
+            elif connection:
+                # Handle packet in connection
+                connection._handle_packet(stream, packet_type)
+                # Close connection
+                if packet_type==consts.WTP_PKT_CLOSE:
+                    # Remove connection object when fully closed
+                    if connection.uplink_state==consts.WTP_STATE_CLOSED and connection.downlink_state==consts.WTP_STATE_CLOSED:
+                        del self._connections[wisp_id]
     def _send_access_spec(self, wisp_id, opspecs):
         """
         Send AccessSpec to WISP.
@@ -120,16 +133,26 @@ class WTPServer(EventTarget):
         :param wisp_id: WISP ID
         :param opspecs: OpSpecs to send
         """
+        # Ongoing AccessSpec for current WISP ID
+        if wisp_id in self._access_spec_deferreds:
+            raise WTPError(consts.WTP_ERR_ONGOING_ACCESS_SPEC)
         # Ensure OpSpecs is a list
-        if not isinstance(opspecs, Container):
+        if not isinstance(opspecs, list):
             opspecs = [opspecs]
         # Get LLRP client
         proto = self._llrp_factory.protocols[0]
         # Do next access
-        return proto.nextAccess(
+        access_deferred = proto.nextAccess(
             stopSpecPar=access_stop_param(),
             # Use WISP ID as AccessSpec ID
             accessSpecID=wisp_id,
             param=opspecs,
             target=wisp_target_info(wisp_id)
         )
+        # Return deferred object
+        d = Deferred()
+        # Chain deferreds in case of error
+        access_deferred.addErrback(d.errback)
+        # Add to deferreds mapping
+        self._access_spec_deferreds[wisp_id] = d
+        return d

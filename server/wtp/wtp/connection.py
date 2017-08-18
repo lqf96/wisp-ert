@@ -21,15 +21,16 @@ class WTPConnection(EventTarget):
         self.uplink_state = consts.WTP_STATE_CLOSED
         self.downlink_state = consts.WTP_STATE_CLOSED
         # Transmission control tools
-        self._rx_ctrl = SlidingWindowRxControl(
+        self._tx_ctrl = SlidingWindowTxControl(
+            reactor=self.server._reactor,
             write_size=24,
             window_size=64,
             checksum_func=checksum_func,
             checksum_type=checksum_type,
-            timeout=0.1,
-            request_access_spec=self.request_access_spec
+            timeout=100,
+            request_access_spec=self._request_access_spec
         )
-        self._tx_ctrl = SlidingWindowTxControl(
+        self._rx_ctrl = SlidingWindowRxControl(
             window_size=64
         )
         # Receive messages and deferreds
@@ -79,20 +80,22 @@ class WTPConnection(EventTarget):
 
         :param stream: Data stream containing open packet
         """
-        # Validate checksum
-        stream.validate_checksum()
         # Update connection state
         self.uplink_state = consts.WTP_STATE_OPENED
-        # Send Ack message
+        self.downlink_state = consts.WTP_STATE_OPENING
+        # Send acknowledgement packet
         self._tx_ctrl.add_packet(self._build_ack())
+        # Send open packet
+        open_stream = self._build_header(consts.WTP_PKT_OPEN)
+        self._tx_ctrl.add_packet(open_stream.getvalue())
+        # Request sending AccessSpec
+        self._request_access_spec()
     def _handle_close(self, stream):
         """
         Handle WTP close packet.
 
         :param stream: Data stream containing close packet
         """
-        # Validate checksum
-        stream.validate_checksum()
         # Update connection information
         self.uplink_state = WTP_STATE_CLOSED
         # Trigger half close or close event
@@ -110,13 +113,18 @@ class WTPConnection(EventTarget):
         """
         # Read acknowledged bytes
         seq_num = stream.read_data("H")
-        # Validate checksum
-        stream.validate_checksum()
-        # Handle acknowledgement with tranmit control tool
-        n_sent_msgs = self._tx_ctrl.handle_ack(seq_num)
-        # Resolve send deferreds
-        for _ in range(n_sent_msgs):
-            self._send_deferreds.pop(0).callback(None)
+        # Downlink opened
+        if self.downlink_state==consts.WTP_STATE_OPENING and seq_num==0:
+            self.downlink_state = consts.WTP_STATE_OPENED
+        # Downlink closed
+        elif self.downlink_state==consts.WTP_STATE_CLOSING:
+            self.downlink_state = consts.WTP_STATE_CLOSED
+        # Handle acknowledgement with transmit control tool
+        else:
+            n_sent_msgs = self._tx_ctrl.handle_ack(seq_num)
+            # Resolve send deferreds
+            for _ in range(n_sent_msgs):
+                self._send_deferreds.pop(0).callback(None)
     def _handle_data_packet(self, stream, msg_begin):
         """
         Handle WTP message data packet.
@@ -130,8 +138,6 @@ class WTPConnection(EventTarget):
         seq_num, payload_size = stream.read_data("HB")
         # Read payload
         payload = stream.read(payload_size)
-        # Validate checksum
-        stream.validate_checksum()
         # Handle received data with receive control tool
         new_msgs = self._rx_ctrl.handle_packet(seq_num, payload, msg_size)
         # Resolve remaining deferreds
@@ -151,8 +157,6 @@ class WTPConnection(EventTarget):
         """
         # Number of read operations and read OpSpec size
         n_reads, read_size = stream.read_data("BB")
-        # Validate checksum
-        stream.validate_checksum()
         # Add read OpSpecs
         self._read_opspec_sizes += [read_size]*n_reads
         # Request sending AccessSpec
@@ -190,7 +194,13 @@ class WTPConnection(EventTarget):
         # Send AccessSpec and schedule next sending
         if opspecs:
             d = self.server._send_access_spec(self.wisp_id, opspecs)
-            d.addCallback(lambda _: self._request_access_spec())
+            # Send AccessSpec callback
+            def send_access_spec_cb(_):
+                # Set ongoing AccessSpec flag
+                self._ongoing_access_spec = False
+                # Next AccessSpec sending
+                self._request_access_spec()
+            d.addCallback(send_access_spec_cb)
         # No more OpSpecs to send, stop
         else:
             self._ongoing_access_spec = False

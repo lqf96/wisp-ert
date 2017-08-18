@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 import struct
+from six.moves import range
 
 import wtp.constants as consts
 from wtp.error import WTPError
@@ -32,16 +33,28 @@ def read_opspec(data_size, opspec_id=0):
 def write_opspec(data, opspec_id=0):
     """
     Create a LLRP Write or BlockWrite OpSpec.
+    (A 1-byte data length will be prepended before data)
 
     :param data: Data to write
     :param opspec_id: OpSpec ID
     :returns: LLRP Write or BlockWrite OpSpec
     """
-    n_words, remainder = divmod(len(data), 2)
-    # Write data padding
-    if remainder!=0:
+    print("Write Data: %s" % data)
+    # Convert data to byte array
+    data = bytearray(data)
+    # Prepend data length
+    data_len = len(data)
+    data.insert(0, data_len)
+    # Add a padding byte when necessary
+    n_words, remainder = divmod(data_len+1, 2)
+    if remainder:
         n_words += 1
-        data += b"\x00"
+        data.append(0)
+    # Swap bytes of every word
+    for i in range(n_words):
+        tmp = data[2*i]
+        data[2*i] = data[2*i+1]
+        data[2*i+1] = tmp
     # BlockWrite OpSpec
     return {
         "OpSpecID": opspec_id,
@@ -64,6 +77,10 @@ def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
     :param wisp_id 16-bit WISP ID
     :returns: LLRP RFID target information
     """
+    # Tag data mask format
+    tag_mask_fmt = "<BH"
+    tag_mask_size = struct.calcsize(tag_mask_fmt)
+    # WISP target information
     return {
         # Memory bank
         "MB": consts.RFID_MB_EPC,
@@ -72,13 +89,13 @@ def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
         # Beginning address of EPC data in EPC memory bank
         "Pointer": 0x20,
         # Tag data mask
-        "TagMask": b"\xff"*struct.calcsize("<BH"),
+        "TagMask": b"\xff"*tag_mask_size,
         # Length of mask in bits
-        "MaskBitCount": 16,
+        "MaskBitCount": 8*tag_mask_size,
         # Tag data for selection
-        "TagData": struct.pack("<BH", wisp_class, wisp_id),
+        "TagData": struct.pack(tag_mask_fmt, wisp_class, wisp_id),
         # Length of data in bits
-        "DataBitCount": 16
+        "DataBitCount": 8*tag_mask_size
     }
 
 def access_stop_param(trigger_type=1, count=1):

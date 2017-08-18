@@ -32,7 +32,7 @@ WTP_STATE_CLOSING = 0x03
 # Not acknowledged
 WTP_ERR_NOT_ACKED = 0x10
 # Required action already done
-WTP_ERR_ALREADY = 0x11
+WIO_ERR_ALREADY = 0x11
 # Connection is busy
 WTP_ERR_BUSY = 0x12
 # Invalid parameter
@@ -43,6 +43,8 @@ WTP_ERR_INVALID_CHECKSUM = 0x14
 WTP_ERR_UNSUPPORT_OP = 0x15
 # Invalid size
 WTP_ERR_INVALID_SIZE = 0x16
+# Ongoing AccessSpec
+WTP_ERR_ONGOING_ACCESS_SPEC = 0x17
 
 # === Miscellaneous ===
 # WTP max sequence number

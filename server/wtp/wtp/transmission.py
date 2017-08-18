@@ -1,18 +1,19 @@
 from __future__ import absolute_import, unicode_literals
 import struct
 from six.moves import range
-from collections import namedtuple
+from recordclass import recordclass
 from twisted.internet.defer import Deferred
 
 import wtp.constants as consts
 from wtp.util import CyclicInt, CyclicRange, ChecksumStream
 
 # Transmit fragment type
-TxFragment = namedtuple("TxFragment", ["seq_num", "begin_msg", "data", "d", "need_send"])
+TxFragment = recordclass("TxFragment", ["seq_num", "begin_msg", "data", "d", "need_send"])
 
 class SlidingWindowTxControl(object):
     """ Sliding window-based transmit control class. """
-    def __init__(self, write_size, window_size, checksum_func, checksum_type, timeout, request_access_spec):
+    def __init__(self, reactor, write_size, window_size, checksum_func,
+        checksum_type, timeout, request_access_spec):
         # Write OpSpec data size
         self.write_size = write_size
         # Sliding window size
@@ -24,6 +25,8 @@ class SlidingWindowTxControl(object):
         # Checksum function and type
         self.checksum_func = checksum_func
         self.checksum_type = checksum_type
+        # Reactor
+        self._reactor = reactor
         # Sequence number
         self._seq_num = CyclicInt(0, consts.WTP_SEQ_MAX)
         # Pending packets
@@ -54,6 +57,8 @@ class SlidingWindowTxControl(object):
             # Update message begin and fragmented position
             self._msg_begin += len(msg)
             self._msg_fragmented = 0
+            # Add message end
+            self._msg_ends.append(self._msg_begin)
             # Remove old message
             messages.pop(0)
             if not messages:
@@ -61,10 +66,10 @@ class SlidingWindowTxControl(object):
             msg = messages[0]
         # Sequence number
         msg_fragmented = self._msg_fragmented
-        seq_num = self._msg_begin+_msg_fragmented
+        seq_num = self._msg_begin+msg_fragmented
         # Maximum packet data size using different criterion
-        max_avail = avail_size-4-struct.calcsize(self.checksum_type)
-        max_msg = len(next_msg)-_msg_fragmented
+        max_avail = avail_size-4
+        max_msg = len(msg)-msg_fragmented
         max_window = self._seq_num+self.window_size-seq_num
         # Packet data size
         packet_data_size = min(max_avail, max_msg, max_window)
@@ -73,10 +78,10 @@ class SlidingWindowTxControl(object):
         # Update fragmented position
         self._msg_fragmented += packet_data_size
         # Make fragment
-        packet_data = next_msg[_msg_fragmented:_msg_fragmented+packet_data_size]
+        packet_data = msg[msg_fragmented:msg_fragmented+packet_data_size]
         return TxFragment(
             seq_num=seq_num,
-            begin_msg=(_msg_fragmented==0),
+            begin_msg=(msg_fragmented==0),
             data=packet_data,
             d=None,
             need_send=False
@@ -111,6 +116,7 @@ class SlidingWindowTxControl(object):
 
         :returns: Number of messages sent
         """
+        print("Handle ack %d" % seq_num)
         # Acknowledged sequence number
         seq_num = CyclicInt(seq_num, consts.WTP_SEQ_MAX)
         # Number of messages sent
@@ -143,6 +149,7 @@ class SlidingWindowTxControl(object):
                 fragment.d.callback(None)
         # Update sequence number
         self._seq_num = seq_num
+        print(n_sent_msgs)
         return n_sent_msgs
     def get_write_data(self):
         """
@@ -158,14 +165,12 @@ class SlidingWindowTxControl(object):
         while packets:
             # Calculate new estimate payload length
             packet = packets.pop(0)
-            estimate_size += len(packet)+struct.calcsize(self.checksum_type)
+            estimate_size += len(packet)
             # OpSpec data will be too long
             if estimate_size>self.write_size:
                 return stream.getvalue()
-            # Write data and checksum to stream
-            stream.begin_checksum()
+            # Write packet to stream
             stream.write(packet)
-            stream.write_checksum()
         # Write message data to stream
         fragments = self._fragments
         while True:
@@ -184,7 +189,7 @@ class SlidingWindowTxControl(object):
                 else:
                     break
             # Calculate new estimate payload length
-            packet_size = 4+len(send_fragment.data)+struct.calcsize(self.checksum_type)
+            packet_size = 4+len(send_fragment.data)
             estimate_size += packet_size
             # OpSpec data will be too long
             if estimate_size>self.write_size:
@@ -198,18 +203,17 @@ class SlidingWindowTxControl(object):
                 stream.write_data("B", consts.WTP_PKT_CONT_MSG)
             stream.write_data("HB", send_fragment.seq_num, len(send_fragment.data))
             stream.write(send_fragment.data)
-            stream.write_checksum()
             # Set fragment timeout
             d = Deferred()
-            d.setTimeout(self.timeout, send_fragment, timeoutFunc=self._handle_packet_timeout)
+            d.addTimeout(self.timeout, self._reactor, self._handle_packet_timeout)
             send_fragment.d = d
         # Return send data
         return stream.getvalue()
 
 # Received message information
-RxMsgInfo = namedtuple("RxMsgInfo", ["begin", "size"])
+RxMsgInfo = recordclass("RxMsgInfo", ["begin", "size"])
 # Received data fragment
-RxFragment = namedtuple("RxFragment", ["seq_num", "data"])
+RxFragment = recordclass("RxFragment", ["seq_num", "data"])
 
 class SlidingWindowRxControl(object):
     """ Sliding window-based receive control class. """

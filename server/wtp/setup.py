@@ -10,5 +10,5 @@ setup(
     description="WISP Transmission Protocol (Server-side)",
     license="GPL",
     packages=["wtp"],
-    install_requires=["six", "twisted", "sllurp"]
+    install_requires=["six", "twisted", "recordclass", "sllurp"]
 )
