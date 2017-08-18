@@ -540,8 +540,8 @@ wtp_status_t wtp_before_do_rfid(
     //Packet size
     uint8_t pkt_size;
 
-    //Triggered every 4 RFID operations
-    if (self->_do_rfid_counter%4!=0)
+    //Triggered every 16 RFID operations
+    if (self->_do_rfid_counter&0x0f!=0)
         return WIO_OK;
     self->_do_rfid_counter++;
 
