@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+//=== WIO helper marcos ===
 //Simple exception handling marco
 //(Usage is similar to rust's "try!")
 #define WIO_TRY(expr) { \
@@ -17,11 +18,11 @@
 //Pointer to anonymous structure instance
 #define WIO_INST_PTR(type) \
     &((type){})
+//Return value through pointer
 #define WIO_RETURN(ret_var, ret_val) { \
         if (ret_var) \
             *ret_var = ret_val; \
     }
-#define WIO_AT(ptr, type, index) (type*)(ptr+index*sizeof(type))
 
 //=== WIO math marcos ===
 //Minimum value of two numbers
