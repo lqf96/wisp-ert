@@ -8,7 +8,7 @@ import wtp.constants as consts
 from wtp.util import CyclicInt, CyclicRange, ChecksumStream
 
 # Transmit fragment type
-TxFragment = recordclass("TxFragment", ["seq_num", "begin_msg", "data", "d", "need_send"])
+TxFragment = recordclass("TxFragment", ["seq_num", "msg_size", "data", "d", "need_send"])
 
 class SlidingWindowTxControl(object):
     """ Sliding window-based transmit control class. """
@@ -81,7 +81,7 @@ class SlidingWindowTxControl(object):
         packet_data = msg[msg_fragmented:msg_fragmented+packet_data_size]
         return TxFragment(
             seq_num=seq_num,
-            begin_msg=(msg_fragmented==0),
+            msg_size=len(msg) if msg_fragmented==0 else 0,
             data=packet_data,
             d=None,
             need_send=False
@@ -194,9 +194,8 @@ class SlidingWindowTxControl(object):
                 return stream.getvalue()
             # Write packet data
             stream.begin_checksum()
-            if send_fragment.begin_msg:
-                msg_len = len(self._messages[0])
-                stream.write_data("BH", consts.WTP_PKT_BEGIN_MSG, msg_len)
+            if send_fragment.msg_size:
+                stream.write_data("BH", consts.WTP_PKT_BEGIN_MSG, send_fragment.msg_size)
             else:
                 stream.write_data("B", consts.WTP_PKT_CONT_MSG)
             stream.write_data("HB", send_fragment.seq_num, len(send_fragment.data))
