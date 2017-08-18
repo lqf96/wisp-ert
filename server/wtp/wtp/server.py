@@ -65,7 +65,6 @@ class WTPServer(EventTarget):
                 continue
             # Read and handle WTP packets from EPC data only when EPC changed
             if self._last_epc.get(wisp_id)!=epc_data:
-                print(bytearray(epc_data))
                 self._last_epc[wisp_id] = epc_data
                 self._handle_packets(stream, wisp_id)
             # OpSpec results

@@ -116,7 +116,6 @@ class SlidingWindowTxControl(object):
 
         :returns: Number of messages sent
         """
-        print("Handle ack %d" % seq_num)
         # Acknowledged sequence number
         seq_num = CyclicInt(seq_num, consts.WTP_SEQ_MAX)
         # Number of messages sent
@@ -149,7 +148,6 @@ class SlidingWindowTxControl(object):
                 fragment.d.callback(None)
         # Update sequence number
         self._seq_num = seq_num
-        print(n_sent_msgs)
         return n_sent_msgs
     def get_write_data(self):
         """

@@ -39,7 +39,6 @@ def write_opspec(data, opspec_id=0):
     :param opspec_id: OpSpec ID
     :returns: LLRP Write or BlockWrite OpSpec
     """
-    print("Write Data: %s" % data)
     # Convert data to byte array
     data = bytearray(data)
     # Prepend data length
