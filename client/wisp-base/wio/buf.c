@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 #include "buf.h"
 
 /**
@@ -16,6 +17,23 @@ wio_status_t wio_buf_init(
     //Initialize cursors
     self->pos_a = 0;
     self->pos_b = 0;
+
+    return WIO_OK;
+}
+
+/**
+ * {@inheritDoc}
+ */
+wio_status_t wio_buf_alloc_init(
+    wio_buf_t* self,
+    uint16_t size
+) {
+    //Allocate memory for buffer
+    uint8_t* mem = malloc(size);
+    if (!mem)
+        return WIO_ERR_NO_MEMORY;
+    //Initialize buffer
+    WIO_TRY(wio_buf_init(self, mem, size))
 
     return WIO_OK;
 }

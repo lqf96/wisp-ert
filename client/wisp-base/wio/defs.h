@@ -21,7 +21,15 @@
         if (ret_var) \
             *ret_var = ret_val; \
     }
+#define WIO_AT(ptr, type, index) (type*)(ptr+index*sizeof(type))
 
+//=== WIO math marcos ===
+//Minimum value of two numbers
+#define WIO_MIN(x, y) ((x<y)?x:y)
+//Minimum value of three numbers
+#define WIO_MIN3(x, y, z) WIO_MIN(WIO_MIN(x, y), z)
+
+//=== WIO type definitions ===
 //WIO status type
 typedef uint8_t wio_status_t;
 //WIO callback type
@@ -38,6 +46,8 @@ static const wio_status_t WIO_ERR_NO_MEMORY = 0x02;
 static const wio_status_t WIO_ERR_ALREADY = 0x03;
 //Invalid parameter
 static const wio_status_t WIO_ERR_INVALID = 0x04;
+//Empty data structure
+static const wio_status_t WIO_ERR_EMPTY = 0x05;
 
 /**
  * Initialize WIO library
