@@ -11,6 +11,9 @@ typedef struct wtp {
     //Uplink state
     wtp_link_state_t _uplink_state;
 
+    //Do RFID counter
+    uint8_t _do_rfid_counter;
+
     //EPC buffer
     wio_buf_t _epc_buf;
     //Read memory
@@ -23,18 +26,15 @@ typedef struct wtp {
     //Receive control instance
     wtp_rx_ctrl_t _rx_ctrl;
 
-    //TODO: Send message callbacks
+    //Send message callbacks queue
+    wio_queue_t _send_cb_queue;
+    //Send message callback closure data queue
+    wio_queue_t _send_cb_data_queue;
 
-    //Receive callbacks
-    wio_callback_t* _recv_cb;
-    //Receive callbacks closure data
-    void** _recv_cb_data;
-    //Receive callbacks queue begin
-    uint8_t _recv_cb_begin;
-    //Receive callbacks queue end
-    uint8_t _recv_cb_end;
-    //Receive callbacks queue size
-    uint8_t _recv_cb_size;
+    //Receive callbacks queue
+    wio_queue_t _recv_cb_queue;
+    //Receive callbacks closure data queue
+    wio_queue_t _recv_cb_data_queue;
 
     //Event callbacks
     wio_callback_t _event_cb[_WTP_EVENT_MAX];
@@ -55,7 +55,8 @@ extern wtp_status_t wtp_init(
     uint16_t timeout,
     uint16_t tx_buf_size,
     uint16_t rx_buf_size,
-    uint8_t n_recv_cb
+    uint8_t n_send,
+    uint8_t n_recv
 );
 
 /**
@@ -146,11 +147,11 @@ extern wtp_status_t wtp_trigger_event(
 );
 
 /**
- * Fill RFID READ memory.
+ * Called after a RFID READ operation completed.
  *
  * @param self WTP endpoint instance
  */
-extern wtp_status_t wtp_fill_read_mem(
+extern wtp_status_t wtp_after_read(
     wtp_t* self
 );
 
@@ -166,10 +167,10 @@ extern wtp_status_t wtp_handle_blockwrite(
 );
 
 /**
- * Fill RFID EPC memory.
+ * Called before a "WISP_doRFID()" call.
  *
  * @param self WTP endpoint instance
  */
-extern wtp_status_t wtp_fill_epc_mem(
+extern wtp_status_t wtp_before_do_rfid(
     wtp_t* self
 );

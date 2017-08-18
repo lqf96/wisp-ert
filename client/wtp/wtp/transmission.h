@@ -4,6 +4,30 @@
 #include <wio.h>
 #include "defs.h"
 
+//WTP READ OpSpec information type
+typedef struct wtp_tx_read_info {
+    //Read size
+    uint8_t _size;
+    //Number of reads
+    uint8_t _n_reads;
+} wtp_tx_read_info_t;
+
+//WTP transmit data fragment type
+typedef struct wtp_tx_fragment {
+    //Sequence number
+    uint16_t _seq_num;
+    //Message size (0 for WTP_PKT_CONT_MSG)
+    uint16_t _msg_size;
+
+    //Fragment data
+    uint8_t* _data;
+    //Fragment size
+    uint8_t _size;
+
+    //Need send flag
+    bool _need_send;
+} wtp_tx_fragment_t;
+
 //WTP sliding window-based transmit control type
 typedef struct wtp_tx_ctrl {
     //Sequence number
@@ -12,6 +36,8 @@ typedef struct wtp_tx_ctrl {
     uint16_t _window_size;
     //Timeout
     uint16_t _timeout;
+    //READ size
+    uint8_t _read_size;
 
     //Send packets buffer
     wio_buf_t _pkt_buf;
@@ -23,10 +49,22 @@ typedef struct wtp_tx_ctrl {
     //Pointer to current packet size
     uint8_t* _pkt_size;
 
-    //TODO: More things
+    //Begin position of next message (Sequence number)
+    uint16_t _msg_begin_seq;
+    //Begin position of next message (Buffer position)
+    uint16_t _msg_begin_pos;
+    //Fragmented position of next message
+    uint16_t _msg_fragmented;
+
+    //Data fragments queue
+    wio_queue_t _fragments_queue;
+    //READ OpSpec information queue
+    wio_queue_t _read_info_queue;
+    //Message ends sequence number queue
+    wio_queue_t _msg_ends_queue;
 } wtp_tx_ctrl_t;
 
-//WTP data fragment type
+//WTP received data fragment type
 typedef struct wtp_rx_fragment {
     //Sequence number
     uint16_t _seq_num;
@@ -83,15 +121,21 @@ typedef struct wtp_rx_ctrl {
  * @param self WTP transmit control instance
  * @param window_size Sliding window size
  * @param timeout Packet sending and requesting uplink timeout
+ * @param read_size Initialize READ OpSpec size
  * @param pkt_buf_size Packet buffer size
  * @param msg_buf_size Message buffer size
+ * @param n_fragments Send data fragments capacity
+ * @param n_msgs Maximum amount of messages waiting to send
  */
 extern wtp_status_t wtp_tx_init(
     wtp_tx_ctrl_t* self,
     uint16_t window_size,
     uint16_t timeout,
+    uint16_t read_size,
     uint16_t pkt_buf_size,
-    uint16_t msg_buf_size
+    uint16_t msg_buf_size,
+    uint8_t n_fragments,
+    uint8_t n_msgs
 );
 
 /**
@@ -109,7 +153,7 @@ extern wtp_status_t wtp_tx_fini(
  * @param self WTP transmit control instance
  * @param pkt_type Packet type
  */
-extern wtp_status_t wtp_begin_pkt(
+extern wtp_status_t wtp_tx_begin_packet(
     wtp_tx_ctrl_t* self,
     wtp_pkt_t pkt_type
 );
@@ -119,8 +163,49 @@ extern wtp_status_t wtp_begin_pkt(
  *
  * @param self WTP transmit control instance
  */
-extern wtp_status_t wtp_end_pkt(
+extern wtp_status_t wtp_tx_end_packet(
     wtp_tx_ctrl_t* self
+);
+
+/**
+ * Add a new message to transmit control.
+ *
+ * @param self WTP transmit control instance
+ * @param data Message data
+ * @param size Message size
+ * @param _read_info READ OpSpec information
+ */
+extern wtp_status_t wtp_tx_add_msg(
+    wtp_tx_ctrl_t* self,
+    uint8_t* data,
+    uint16_t size,
+    wtp_tx_read_info_t** _read_info
+);
+
+/**
+ * Make a new sending data fragment.
+ *
+ * @param self WTP transmit control instance
+ * @param avail_size Available size for message data in a READ OpSpec
+ * @param _fragment New data fragment
+ */
+extern wtp_status_t wtp_tx_make_fragment(
+    wtp_tx_ctrl_t* self,
+    uint8_t avail_size,
+    wtp_tx_fragment_t** _fragment
+);
+
+/**
+ * Handle acknowledgement.
+ *
+ * @param self WTP transmit control instance
+ * @param seq_num Sequence number
+ * @param _n_msgs Number of messages sent
+ */
+extern wtp_status_t wtp_tx_handle_ack(
+    wtp_tx_ctrl_t* self,
+    uint16_t seq_num,
+    uint8_t* _n_msgs
 );
 
 /**
