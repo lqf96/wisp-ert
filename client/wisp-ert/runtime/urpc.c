@@ -1,1 +1,1 @@
-../../../u-rpc/c/urpc.c
+../../../deps/u-rpc/c/urpc.c
