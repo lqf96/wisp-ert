@@ -1,7 +1,8 @@
 #pragma once
 
-//Bad file descriptor
-extern const int EBADF;
+#include <ert/rpc.h>
 
-//Error number
-extern int errno;
+//Bad file descriptor
+#define EBADF ERT_CONST(EBADF)
+//Invalid argument
+#define EINVAL ERT_CONST(EINVAL)

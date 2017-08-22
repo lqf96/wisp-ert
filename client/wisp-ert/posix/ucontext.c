@@ -1,23 +1,9 @@
 #include <ucontext.h>
 
-extern void getmcontext(mcontext_t* mctx);
-extern void setmcontext(mcontext_t* mctx);
-
 /**
  * {@inheritDoc}
  */
-int getcontext(
-    ucontext_t* ctx
-) {
-    //TODO: Get context
-
-    return 0;
-}
-
-/**
- * {@inheritDoc}
- */
-extern void makecontext(
+void makecontext(
     ucontext_t* ctx,
     void (*func)(),
     int argc,
@@ -29,11 +15,11 @@ extern void makecontext(
 /**
  * {@inheritDoc}
  */
-extern int swapcontext(
+int swapcontext(
     ucontext_t* octx,
-    ucontext_t* ctx
+    const ucontext_t* ctx
 ) {
-    //TODO: Swap context
-
+    if (getcontext(octx)==0)
+        setcontext(ctx);
     return 0;
 }

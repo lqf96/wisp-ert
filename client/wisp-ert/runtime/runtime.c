@@ -2,10 +2,17 @@
 #include <string.h>
 #include <wisp-base.h>
 #include <wtp.h>
+#include <ert/urpc.h>
+#include <ert/rpc.h>
 #include <ert/runtime.h>
 
 //WISP ID
-uint16_t ert_wisp_id;
+uint16_t ert_wisp_id = 1;
+
+//WTP endpoint
+wtp_t* ert_wtp_ep = WIO_INST_PTR(wtp_t);
+//u-RPC endpoint
+urpc_t* ert_rpc_ep = WIO_INST_PTR(urpc_t);
 
 //Blockwrite data buffer
 static uint8_t blockwrite_buffer[_ERT_BW_SIZE] = {0};
@@ -16,9 +23,6 @@ static WISP_dataStructInterface_t wisp_data;
 static bool read_flag = false;
 //Blockwrite action flag
 static bool blockwrite_flag = false;
-
-//WTP endpoint
-static wtp_t* wtp_ep = WIO_INST_PTR(wtp_t);
 
 /**
  * WISP RFID Read callback.
@@ -34,10 +38,37 @@ static void ert_blockwrite_callback(void) {
     blockwrite_flag = true;
 }
 
+static WIO_CALLBACK(ert_on_connect) {
+    return WIO_OK;
+}
+
+/**
+ * {@inheritDoc}
+ */
+void ert_async_suspend(
+    ucontext_t* async_ctx,
+    ert_status_t* _status,
+    void** _result
+) {
+
+}
+
+/**
+ * {@inheritDoc}
+ */
+WIO_CALLBACK(ert_async_resume) {
+    //TODO: Async resume
+    return WIO_OK;
+}
+
 /**
  * {@inheritDoc}
  */
 void main(void) {
+    //Call pre-init hook
+    if (ert_pre_init)
+        ert_pre_init();
+
     //Initialize WISP firmware
     WISP_init();
 
@@ -62,21 +93,28 @@ void main(void) {
     //WISP ID
     memcpy(wisp_data.epcBuf+1, &ert_wisp_id, 2);
 
-    /*/Initialize u-RPC endpoint
+    //Initialize u-RPC endpoint
     urpc_init(
+        //u-RPC endpoint
         ert_rpc_ep,
+        //Function table size
         16,
-        192,
-        64,
+        //Send buffer size
+        96,
+        //Temporary buffer size
+        32,
+        //Send function closure data
         ert_wtp_ep,
+        //Send function
         (urpc_send_func_t)wtp_send,
+        //Capacity of callback table
         8
-    );*/
+    );
 
     //Initialize WTP endpoint
     wtp_init(
         //WTP endpoint
-        wtp_ep,
+        ert_wtp_ep,
         //EPC memory
         //(The first three bytes are for WISP class and WISP ID)
         wisp_data.epcBuf+3,
@@ -100,25 +138,28 @@ void main(void) {
         //Capacity of receiving messages
         5
     );
+
+    //WTP connected event handler
+    wtp_on_event(ert_wtp_ep, WTP_EVENT_OPEN, NULL, ert_on_connect);
     //Connect to WTP server
-    wtp_connect(wtp_ep);
+    wtp_connect(ert_wtp_ep);
 
     //RFID loop
     while (true) {
         //WTP before RFID hook
-        wtp_before_do_rfid(wtp_ep);
+        wtp_before_do_rfid(ert_wtp_ep);
 
         //Do RFID
         WISP_doRFID();
 
         //Called after a Read operation
         if (read_flag) {
-            wtp_after_read(wtp_ep);
+            wtp_after_read(ert_wtp_ep);
             read_flag = false;
         }
         //Called after a BlockWrite operation
         if (blockwrite_flag) {
-            wtp_handle_blockwrite(wtp_ep, blockwrite_buffer[0]);
+            wtp_handle_blockwrite(ert_wtp_ep, blockwrite_buffer[0]);
             blockwrite_flag = false;
         }
     }

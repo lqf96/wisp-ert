@@ -1,10 +1,4 @@
-#include <rpc.h>
+#include <ert/rpc.h>
 
-//Open function handle
-urpc_func_t ert_func_open;
-//Close function handle
-urpc_func_t ert_func_close;
-//Read function handle
-urpc_func_t ert_func_read;
-//Write function handle
-urpc_func_t ert_func_write;
+//ERT constants store
+extern ert_consts_t ert_consts_store;
