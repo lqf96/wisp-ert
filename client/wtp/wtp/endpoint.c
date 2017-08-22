@@ -534,16 +534,21 @@ wtp_status_t wtp_handle_blockwrite(
 wtp_status_t wtp_before_do_rfid(
     wtp_t* self
 ) {
-    //Send packet and EPC buffer
+    //Triggered every 16 RFID operations
+    if (self->_do_rfid_counter%16!=0)
+        return WIO_OK;
+    self->_do_rfid_counter++;
+
+    //Send packet buffer
     wio_buf_t* pkt_buf = &self->_tx_ctrl._pkt_buf;
+    //No packet to write
+    if (pkt_buf->pos_a==pkt_buf->pos_b)
+        return WIO_OK;
+
+    //EPC buffer
     wio_buf_t* epc_buf = &self->_epc_buf;
     //Packet size
     uint8_t pkt_size;
-
-    //Triggered every 16 RFID operations
-    if (self->_do_rfid_counter&0x0f!=0)
-        return WIO_OK;
-    self->_do_rfid_counter++;
 
     //Reset EPC buffer
     WIO_TRY(wio_reset(epc_buf))
