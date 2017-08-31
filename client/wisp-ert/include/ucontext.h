@@ -11,23 +11,23 @@
 //ERT machine context type
 typedef struct mcontext {
     //Program counter
-    uint16_t pc;
+    uint32_t pc;
     //Stack pointer
-    uint16_t sp;
+    uint32_t sp;
 
     //General purpose registers
-    uint16_t r4;
-    uint16_t r5;
-    uint16_t r6;
-    uint16_t r7;
-    uint16_t r8;
-    uint16_t r9;
-    uint16_t r10;
-    uint16_t r11;
-    uint16_t r12;
-    uint16_t r13;
-    uint16_t r14;
-    uint16_t r15;
+    uint32_t r4;
+    uint32_t r5;
+    uint32_t r6;
+    uint32_t r7;
+    uint32_t r8;
+    uint32_t r9;
+    uint32_t r10;
+    uint32_t r11;
+    uint32_t r12;
+    uint32_t r13;
+    uint32_t r14;
+    uint32_t r15;
 } mcontext_t;
 
 //ERT user context type

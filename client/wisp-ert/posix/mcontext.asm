@@ -4,51 +4,49 @@
 ; Get machine context
 getmcontext:
 	; Save stack pointer
-	MOV SP, 2(R12)
+	MOVX SP, 4(R12)
     ; Save general purpose registers
-	MOV R4, 4(R12)
-    MOV R5, 6(R12)
-    MOV R6, 8(R12)
-    MOV R7, 10(R12)
-    MOV R8, 12(R12)
-    MOV R9, 14(R12)
-    MOV R10, 16(R12)
-    MOV R11, 18(R12)
-    MOV R13, 22(R12)
-    MOV R14, 24(R12)
-    MOV R15, 26(R12)
+	MOVX R4, 8(R12)
+    MOVX R5, 12(R12)
+    MOVX R6, 16(R12)
+    MOVX R7, 20(R12)
+    MOVX R8, 24(R12)
+    MOVX R9, 28(R12)
+    MOVX R10, 32(R12)
+    MOVX R11, 36(R12)
+    MOVX R13, 44(R12)
+    MOVX R14, 48(R12)
+    MOVX R15, 52(R12)
     ; Return value for machine context
-    MOV #1, 20(R12)
+    MOVX #1, 40(R12)
     ; Program counter
-    MOV (SP), R7
-    MOV R7, (R12)
-    ; Restore R7
-    MOV 10(R12), R7
+    MOVX 0(SP), 0(R12)
     ; Return value
-    MOV #0, R12
+    MOVX #0, R12
     RETA
 
 ; Set machine context
 setmcontext:
 	; Restore stack pointer
-	MOV 2(R12), SP
+	MOVX 4(R12), SP
 	; Push program counter onto stack
-	PUSH (R12)
+	MOVX 0(R12), R7
+	PUSHA R7
     ; Restore general purpose registers
-    MOV 4(R12), R4
-    MOV 6(R12), R5
-    MOV 8(R12), R6
-    MOV 10(R12), R7
-    MOV 12(R12), R8
-    MOV 14(R12), R9
-    MOV 16(R12), R10
-    MOV 18(R12), R11
-    MOV 22(R12), R13
-    MOV 24(R12), R14
-    MOV 26(R12), R15
+    MOVX 8(R12), R4
+    MOVX 12(R12), R5
+    MOVX 16(R12), R6
+    MOVX 20(R12), R7
+    MOVX 24(R12), R8
+    MOVX 28(R12), R9
+    MOVX 32(R12), R10
+    MOVX 36(R12), R11
+    MOVX 44(R12), R13
+    MOVX 48(R12), R14
+    MOVX 52(R12), R15
     ; Restore R12
-    MOV 20(R12), R12
+    MOVX 40(R12), R12
     ; Restore program counter
-    RET
+    RETA
 
 .end
