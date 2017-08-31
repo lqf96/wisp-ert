@@ -58,7 +58,7 @@ extern int setmcontext(
 );
 
 /**
- * Make user context.
+ * Make user context (Currently arguments size must be 4)
  *
  * @param ctx User context
  * @param func Function to run
