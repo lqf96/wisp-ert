@@ -40,16 +40,10 @@ class Runtime(object):
         self._services = {}
         # WTP connection to services mapping
         self._clients = {}
-        # LLRP factory
-        factory = self._llrp_factory = LLRPClientFactory(
-            antennas=antennas,
-            modulation="WISP5",
-            report_every_n_tags=n_tags_per_report,
-            start_inventory=True
-        )
         # WTP endpoint
         wtp_ep = self._wtp_ep = WTPServer(
-            llrp_factory=factory
+            antennas=antennas,
+            n_tags_per_report=n_tags_per_report
         )
         # Add connect event handler
         wtp_ep.on("connect", self._handle_new_client)

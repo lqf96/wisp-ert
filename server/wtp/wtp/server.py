@@ -12,13 +12,13 @@ from wtp.error import WTPError
 
 class WTPServer(EventTarget):
     """ WTP server type. """
-    def __init__(self, antennas=[1], reactor=inet_reactor):
+    def __init__(self, antennas=[1], n_tags_per_report=5, reactor=inet_reactor):
         # Initialize base classes
         super(WTPServer, self).__init__()
         # LLRP factory
         llrp_factory = self._llrp_factory = LLRPClientFactory(
             antennas=antennas,
-            report_every_n_tags=1,
+            report_every_n_tags=n_tags_per_report,
             modulation="WISP5",
             start_inventory=True
         )
@@ -57,7 +57,7 @@ class WTPServer(EventTarget):
         reports = llrp_msg.msgdict["RO_ACCESS_REPORT"]["TagReportData"]
         for report in reports:
             # Get and parse EPC data
-            epc_data = unhexlify(report["EPC-96"])
+            epc_data = bytearray(unhexlify(report["EPC-96"]))
             stream = ChecksumStream(epc_data)
             wisp_class, wisp_id = stream.read_data("BH")
             # Ignore non-WISP devices

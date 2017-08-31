@@ -19,7 +19,6 @@ if __name__=="__main__":
     options = vars(parser.parse_args())
     # Antennas
     options["antennas"] = [int(x.strip()) for x in options["antennas"].split(",")]
-    print(options["antennas"])
     # Handle extra option keypaths
     extra_opt_ns = {}
     if options["option"]:
