@@ -194,6 +194,40 @@ static wtp_status_t wtp_handle_cont_msg(
 }
 
 /**
+ * Handle WTP set parameter message packet.
+ *
+ * @param self WTP endpoint instance
+ * @param buf Packets buffer
+ */
+static wtp_status_t wtp_handle_set_param(
+    wtp_t* self,
+    wio_buf_t* buf
+) {
+    //Read parameter code
+    wtp_param_t param_code;
+    WIO_TRY(wio_read(buf, &param_code, 1))
+
+    switch (param_code) {
+        //TODO: WTP_PARAM_WINDOW_SIZE
+        case WTP_PARAM_WINDOW_SIZE: {
+            break;
+        }
+        //WTP_PARAM_READ_SIZE
+        case WTP_PARAM_READ_SIZE: {
+            //Suggested READ size
+            uint8_t read_size;
+            WIO_TRY(wio_read(buf, &read_size, 2))
+            //Set READ size
+            self->_tx_ctrl._read_size = read_size;
+
+            break;
+        }
+    }
+
+    return WIO_OK;
+}
+
+/**
  * {@inheritDoc}
  */
 wtp_status_t wtp_init(
@@ -534,10 +568,11 @@ wtp_status_t wtp_handle_blockwrite(
 wtp_status_t wtp_before_do_rfid(
     wtp_t* self
 ) {
-    //Triggered every 16 RFID operations
-    if (self->_do_rfid_counter%16!=0)
-        return WIO_OK;
+    //Update counter
     self->_do_rfid_counter++;
+    //Triggered every 16 RFID operations
+    if (self->_do_rfid_counter%16!=1)
+        return WIO_OK;
 
     //Send packet buffer
     wio_buf_t* pkt_buf = &self->_tx_ctrl._pkt_buf;
@@ -584,4 +619,5 @@ wtp_pkt_handler_t wtp_pkt_handlers[_WTP_PKT_MAX] = {
     wtp_handle_begin_msg, //WTP_PKT_BEGIN_MSG
     wtp_handle_cont_msg, //WTP_PKT_CONT_MSG
     NULL, //WTP_PKT_REQ_UPLINK
+    wtp_handle_set_param, //WTP_PKT_SET_PARAM
 };
