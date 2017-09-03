@@ -49,8 +49,28 @@ wio_status_t wio_read(
     //Out of range check
     if (self->pos_a+size>self->size)
         return WIO_ERR_OUT_OF_RANGE;
+
+    //Source
+    uint8_t* src = self->buffer+self->pos_a;
     //Copy data
-    memcpy(data, self->buffer+self->pos_a, size);
+    switch (size) {
+        //Byte
+        case 1: {
+            *((uint8_t*)data) = *src;
+            break;
+        }
+        //Word
+        case 2: {
+            *((uint16_t*)data) = *((uint16_t*)src);
+            break;
+        }
+        //More than 2 bytes
+        default: {
+            memcpy(data, src, size);
+            break;
+        }
+    }
+
     //Update cursor
     self->pos_a += size;
 
@@ -68,8 +88,28 @@ wio_status_t wio_write(
     //Out of range check
     if (self->pos_b+size>self->size)
         return WIO_ERR_OUT_OF_RANGE;
+
+    //Destination
+    uint8_t* dst = self->buffer+self->pos_b;
     //Copy data
-    memcpy(self->buffer+self->pos_b, data, size);
+    switch (size) {
+        //Byte
+        case 1: {
+            *dst = *((const uint8_t*)data);
+            break;
+        }
+        //Word
+        case 2: {
+            *((uint16_t*)dst) = *((const uint16_t*)data);
+            break;
+        }
+        //More than 2 bytes
+        default: {
+            memcpy(dst, data, size);
+            break;
+        }
+    }
+
     //Update cursor
     self->pos_b += size;
 
