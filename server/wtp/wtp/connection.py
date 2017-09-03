@@ -6,6 +6,7 @@ from twisted.internet.defer import Deferred
 import wtp.constants as consts
 from wtp.util import EventTarget, ChecksumStream
 from wtp.transmission import SlidingWindowTxControl, SlidingWindowRxControl
+from wtp.cong_ctrl import SlidingWindowOpSpecControl
 from wtp.llrp_util import read_opspec, write_opspec
 
 class WTPConnection(EventTarget):
@@ -23,7 +24,7 @@ class WTPConnection(EventTarget):
         # Transmission control tools
         self._tx_ctrl = SlidingWindowTxControl(
             reactor=self.server._reactor,
-            write_size=24,
+            write_size=consts.WISP_OPSPEC_INIT*2,
             window_size=64,
             checksum_func=checksum_func,
             checksum_type=checksum_type,
@@ -33,6 +34,15 @@ class WTPConnection(EventTarget):
         self._rx_ctrl = SlidingWindowRxControl(
             window_size=64
         )
+        # Congestion control tools
+        self._opspec_ctrl = SlidingWindowOpSpecControl(
+            read_words=consts.WISP_OPSPEC_INIT,
+            write_words=consts.WISP_OPSPEC_INIT
+        )
+        self._tx_cong_ctrl = SlidingWindowCongControl(
+        )
+        # OpSpec control counter
+        self._opspec_ctrl_counter = 0
         # Receive messages and deferreds
         self._recv_msgs = []
         self._recv_deferreds = []
@@ -80,6 +90,8 @@ class WTPConnection(EventTarget):
 
         :param stream: Data stream containing open packet
         """
+        # Verify checksum
+        stream.validate_checksum()
         # Update connection state
         self.uplink_state = consts.WTP_STATE_OPENED
         self.downlink_state = consts.WTP_STATE_OPENING
@@ -96,6 +108,8 @@ class WTPConnection(EventTarget):
 
         :param stream: Data stream containing close packet
         """
+        # Verify checksum
+        stream.validate_checksum()
         # Update connection information
         self.uplink_state = WTP_STATE_CLOSED
         # Trigger half close or close event
@@ -113,6 +127,8 @@ class WTPConnection(EventTarget):
         """
         # Read acknowledged bytes
         seq_num = stream.read_data("H")
+        # Verify checksum
+        stream.validate_checksum()
         # Downlink opened
         if self.downlink_state==consts.WTP_STATE_OPENING and seq_num==0:
             self.downlink_state = consts.WTP_STATE_OPENED
@@ -138,6 +154,8 @@ class WTPConnection(EventTarget):
         seq_num, payload_size = stream.read_data("HB")
         # Read payload
         payload = stream.read(payload_size)
+        # Verify checksum
+        stream.validate_checksum()
         # Handle received data with receive control tool
         new_msgs = self._rx_ctrl.handle_packet(seq_num, payload, msg_size)
         # Resolve remaining deferreds
@@ -157,10 +175,30 @@ class WTPConnection(EventTarget):
         """
         # Number of read operations and read OpSpec size
         n_reads, read_size = stream.read_data("BB")
+        # Verify checksum
+        stream.validate_checksum()
         # Add read OpSpecs
         self._read_opspec_sizes += [read_size]*n_reads
         # Request sending AccessSpec
         self._request_access_spec()
+    def _handle_set_param(self, stream):
+        """
+        Handle WTP set parameter packet.
+
+        :param stream: Data stream containing set parameter packet
+        """
+        # Parameter type and value
+        param_type = stream.read_data("B")
+        # Window size
+        if param_type==consts.WTP_PARAM_WINDOW_SIZE:
+            window_size = stream.read_data("H")
+            # Verify checksum
+            stream.validate_checksum()
+            # Set window size
+            self._rx_ctrl.window_size = window_size
+        # Unknown parameter
+        else:
+            raise WTPError(consts.WTP_ERR_UNSUPPORT_OP)
     def _request_access_spec(self):
         """
         Request sending AccessSpec to WISP.
@@ -175,7 +213,11 @@ class WTPConnection(EventTarget):
         while True:
             # Add a Read OpSpec
             if self._read_opspec_sizes:
-                opspecs.append(read_opspec(self._read_opspec_sizes.pop(0), opspec_id))
+                # Read size
+                read_size = self._read_opspec_sizes.pop(0)
+                # Update OpSpecs list and OpSpec control
+                opspecs.append(read_opspec(read_size, opspec_id))
+                self._opspec_ctrl.add_read_opspec(read_size//2)
                 # Update OpSpec ID
                 opspec_id += 1
             if opspec_id>=consts.LLRP_N_OPSPECS_MAX:
@@ -183,7 +225,11 @@ class WTPConnection(EventTarget):
             # Add a Write OpSpec
             write_data = self._tx_ctrl.get_write_data()
             if write_data:
-                opspecs.append(write_opspec(write_data, opspec_id))
+                # Write OpSpec
+                write_spec = write_opspec(write_data, opspec_id)
+                # Update OpSpecs list and OpSpec control
+                opspecs.append(write_spec)
+                self._opspec_ctrl.add_write_opspec(write_spec["WriteDataWordCount"])
                 # Update OpSpec ID
                 opspec_id += 1
             if opspec_id>=consts.LLRP_N_OPSPECS_MAX:
@@ -195,9 +241,34 @@ class WTPConnection(EventTarget):
         if opspecs:
             d = self.server._send_access_spec(self.wisp_id, opspecs)
             # Send AccessSpec callback
-            def send_access_spec_cb(_):
+            def send_access_spec_cb(opspec_results):
                 # Set ongoing AccessSpec flag
                 self._ongoing_access_spec = False
+                # Sort OpSpec results by OpSpec ID
+                opspec_results.sort(key=lambda opspec: opspec["ID"])
+                # Report Read or Write/BlockWrite OpSpec result to OpSpec control
+                for opspec in opspec_results:
+                    # TODO: Write/BlockWrite
+                    if "WriteDataWordCount" in opspec:
+                        # Number of words written
+                        write_words = opspec["WriteDataWordCount"]
+                        # Update OpSpec control and Write/BlockWrite size
+                        new_write_words = self._opspec_ctrl.report_write_result(write_words)
+                        self._tx_ctrl.write_size = new_write_words*2
+                    # TODO: Read
+                    else:
+                        # Number of words
+                        read_words = opspec["WordCount"]
+                        # Update OpSpec control
+                        new_read_words = self._opspec_ctrl.report_read_result(read_words)
+                        # Update Read size at WISP side every 16 Read OpSpec
+                        self._opspec_ctrl_counter += 1
+                        if self._opspec_ctrl_counter%16==0:
+                            # Build set parameter packet
+                            pkt_stream = self._build_header(consts.WTP_PKT_SET_PARAM)
+                            pkt_stream.write_data("BB", consts.WTP_PARAM_READ_SIZE, new_read_words*2)
+                            # Add to transmission control
+                            self._tx_ctrl.add_packet(pkt_stream.getvalue())
                 # Next AccessSpec sending
                 self._request_access_spec()
             d.addCallback(send_access_spec_cb)
@@ -245,5 +316,6 @@ class WTPConnection(EventTarget):
         consts.WTP_PKT_ACK: _handle_ack,
         consts.WTP_PKT_BEGIN_MSG: functools.partial(_handle_data_packet, msg_begin=True),
         consts.WTP_PKT_CONT_MSG: functools.partial(_handle_data_packet, msg_begin=False),
-        consts.WTP_PKT_REQ_UPLINK: _handle_req_uplink
+        consts.WTP_PKT_REQ_UPLINK: _handle_req_uplink,
+        consts.WTP_PKT_SET_PARAM: _handle_set_param
     }

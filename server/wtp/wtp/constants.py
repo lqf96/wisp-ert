@@ -15,8 +15,8 @@ WTP_PKT_BEGIN_MSG = 0x04
 WTP_PKT_CONT_MSG = 0x05
 # Request uplink transfer
 WTP_PKT_REQ_UPLINK = 0x06
-# Protocol error
-WTP_PKT_ERR = 0x07
+# Set parameter
+WTP_PKT_SET_PARAM = 0x07
 
 # === WTP connection states ===
 # Closed
@@ -46,6 +46,12 @@ WTP_ERR_INVALID_SIZE = 0x16
 # Ongoing AccessSpec
 WTP_ERR_ONGOING_ACCESS_SPEC = 0x17
 
+# === WTP parameter code ===
+# Sliding window size
+WTP_PARAM_WINDOW_SIZE = 0x00
+# Read size
+WTP_PARAM_READ_SIZE = 0x01
+
 # === Miscellaneous ===
 # WTP max sequence number
 WTP_SEQ_MAX = 0x10000
@@ -53,8 +59,15 @@ WTP_SEQ_MAX = 0x10000
 # WISP class
 WISP_CLASS = 0x10
 
+# WISP initialize number of words per OpSpec
+WISP_OPSPEC_INIT = 12
+# WISP minimum number of words per OpSpec
+WISP_OPSPEC_MIN = 4
+# WISP maximum number of words per OpSpec
+WISP_OPSPEC_MAX = 16
+
 # Maximum OpSpecs in 1 AccessSpec
-LLRP_N_OPSPECS_MAX = 8
+LLRP_N_OPSPECS_MAX = 4
 
 # EPC memory bank
 RFID_MB_EPC = 0x01

@@ -200,6 +200,7 @@ class SlidingWindowTxControl(object):
                 stream.write_data("B", consts.WTP_PKT_CONT_MSG)
             stream.write_data("HB", send_fragment.seq_num, len(send_fragment.data))
             stream.write(send_fragment.data)
+            stream.write_checksum()
             # Set fragment timeout
             d = Deferred()
             d.addTimeout(self.timeout, self._reactor, self._handle_packet_timeout)

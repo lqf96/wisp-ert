@@ -71,19 +71,20 @@ class WTPServer(EventTarget):
             opspec_results = report.get("OpSpecResult")
             if not opspec_results:
                 continue
+            # Ensure OpSpec results is container
+            if not isinstance(opspec_results, list):
+                opspec_results = [opspec_results]
             # Resolve pending AccessSpec deferreds
             d = self._access_spec_deferreds.pop(wisp_id, None)
             if d:
                 d.callback(opspec_results)
-            # Ensure OpSpec results is container
-            if not isinstance(opspec_results, list):
-                opspec_results = [opspec_results]
+            # Handle Read
             for opspec_result in opspec_results:
                 opspec_id = opspec_result["OpSpecID"]
                 # Read data result
                 read_data = opspec_result.get("ReadData")
                 if read_data:
-                    stream = ChecksumStream(read_data, checksum_func=xor_checksum)
+                    stream = ChecksumStream(read_data)
                     self._handle_packets(stream, wisp_id)
     def _handle_packets(self, stream, wisp_id):
         """
@@ -109,8 +110,8 @@ class WTPServer(EventTarget):
                     connection = self._connections[wisp_id] = WTPConnection(
                         server=self,
                         wisp_id=wisp_id,
-                        checksum_func=xor_checksum,
-                        checksum_type="<B"
+                        checksum_func=None,
+                        checksum_type=None
                     )
                     # Handle packet in connection
                     connection._handle_packet(stream, packet_type)
