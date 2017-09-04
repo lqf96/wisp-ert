@@ -1,12 +1,12 @@
 ; Global symbols
-	.global getmcontext, setmcontext
+    .global getmcontext, setmcontext
 
 ; Get machine context
 getmcontext:
-	; Save stack pointer
-	MOVX SP, 4(R12)
+    ; Save stack pointer
+    MOVX SP, 4(R12)
     ; Save general purpose registers
-	MOVX R4, 8(R12)
+    MOVX R4, 8(R12)
     MOVX R5, 12(R12)
     MOVX R6, 16(R12)
     MOVX R7, 20(R12)
@@ -27,11 +27,11 @@ getmcontext:
 
 ; Set machine context
 setmcontext:
-	; Restore stack pointer
-	MOVX 4(R12), SP
-	; Push program counter onto stack
-	MOVX 0(R12), R7
-	PUSHA R7
+    ; Restore stack pointer
+    MOVX 4(R12), SP
+    ; Push program counter onto stack
+    MOVX 0(R12), R7
+    PUSHA R7
     ; Restore general purpose registers
     MOVX 8(R12), R4
     MOVX 12(R12), R5
