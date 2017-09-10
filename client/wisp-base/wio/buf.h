@@ -103,13 +103,3 @@ extern wio_status_t wio_free(
     wio_buf_t* self,
     uint16_t size
 );
-
-/**
- * Reset WIO buffer cursors.
- *
- * @param self WIO buffer instance
- * @return WIO_OK
- */
-extern wio_status_t wio_reset(
-    wio_buf_t* self
-);

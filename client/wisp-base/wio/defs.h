@@ -8,9 +8,9 @@
 //Simple exception handling marco
 //(Usage is similar to rust's "try!")
 #define WIO_TRY(expr) { \
-        wio_status_t status = expr; \
-        if (status) \
-            return status; \
+        wio_status_t __status = expr; \
+        if (__status) \
+            return __status; \
     }
 //Callback declaration helper
 #define WIO_CALLBACK(name) \
@@ -35,6 +35,14 @@
 typedef uint8_t wio_status_t;
 //WIO callback type
 typedef wio_status_t (*wio_callback_t)(void*, wio_status_t, void*);
+
+//WIO closure type
+typedef struct wio_closure {
+    //Closure data
+    void* data;
+    //Function
+    wio_callback_t func;
+} wio_closure_t;
 
 //=== WIO error codes ===
 //No error

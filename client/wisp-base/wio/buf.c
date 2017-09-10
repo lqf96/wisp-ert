@@ -52,21 +52,28 @@ wio_status_t wio_read(
 
     //Source
     uint8_t* src = self->buffer+self->pos_a;
+    //Destionation
+    uint8_t* dst = (uint8_t*)data;
+
     //Copy data
     switch (size) {
         //Byte
         case 1: {
-            *((uint8_t*)data) = *src;
+            *dst = *src;
+
             break;
         }
         //Word
         case 2: {
-            *((uint16_t*)data) = *((uint16_t*)src);
+            *dst = *src;
+            *(dst+1) = *(src+1);
+
             break;
         }
         //More than 2 bytes
         default: {
             memcpy(data, src, size);
+
             break;
         }
     }
@@ -89,23 +96,30 @@ wio_status_t wio_write(
     if (self->pos_b+size>self->size)
         return WIO_ERR_OUT_OF_RANGE;
 
+    //Source
+    const uint8_t* src = (const uint8_t*)data;
     //Destination
     uint8_t* dst = self->buffer+self->pos_b;
+    
     //Copy data
     switch (size) {
         //Byte
         case 1: {
-            *dst = *((const uint8_t*)data);
+            *dst = *src;
+
             break;
         }
         //Word
         case 2: {
-            *((uint16_t*)dst) = *((const uint16_t*)data);
+            *dst = *src;
+            *(dst+1) = *(src+1);
+
             break;
         }
         //More than 2 bytes
         default: {
             memcpy(dst, data, size);
+
             break;
         }
     }
@@ -172,19 +186,6 @@ wio_status_t wio_free(
         self->pos_a = 0;
     //Update cursor
     self->pos_a += size;
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wio_status_t wio_reset(
-    wio_buf_t* self
-) {
-    //Reset cursors
-    self->pos_a = 0;
-    self->pos_b = 0;
 
     return WIO_OK;
 }
