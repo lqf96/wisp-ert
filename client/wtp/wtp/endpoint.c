@@ -15,12 +15,15 @@ static wtp_status_t wtp_handle_open(
     wio_buf_t* buf
 ) {
     wtp_tx_ctrl_t* tx_ctrl = &self->_tx_ctrl;
+    //Packet buffer
+    wio_buf_t* pkt_buf = &tx_ctrl->_pkt_buf;
 
     //Open downlink
     self->_downlink_state = WTP_STATE_OPENED;
 
     //Send acknowledgement packet
     WIO_TRY(wtp_tx_begin_packet(tx_ctrl, WTP_PKT_ACK))
+    WIO_TRY(wio_write(pkt_buf, &tx_ctrl->_seq_num, 2))
     WIO_TRY(wtp_tx_end_packet(tx_ctrl))
     //Invoke and remove callback
     WIO_TRY(wtp_trigger_event(self, WTP_EVENT_OPEN, WIO_OK, NULL))
@@ -248,15 +251,15 @@ wtp_status_t wtp_init(
     //Uplink state
     self->_uplink_state = WTP_STATE_CLOSED;
 
-    //Do RFID counter
-    self->_do_rfid_counter = 0;
-
     //EPC buffer
     WIO_TRY(wio_buf_init(&self->_epc_buf, epc_mem, epc_buf_size))
     //Read memory
     self->_read_mem = read_mem;
     //Write memory
     self->_write_mem = write_mem;
+
+    //Read memory loaded flag
+    self->_read_mem_loaded = false;
 
     //Transmit control memory unit
     uint16_t tx_mem_unit = tx_buf_size/4;
@@ -374,6 +377,7 @@ wtp_status_t wtp_send(
     wtp_tx_ctrl_t* tx_ctrl = &self->_tx_ctrl;
     //New message READ OpSpec information
     wtp_tx_read_info_t* read_info;
+
     //Add message to transmit control
     WIO_TRY(wtp_tx_add_msg(tx_ctrl, data, size, &read_info))
 
@@ -383,6 +387,10 @@ wtp_status_t wtp_send(
     WIO_TRY(wio_write(pkt_buf, &read_info->_n_reads, 1))
     WIO_TRY(wio_write(pkt_buf, &read_info->_size, 1))
     WIO_TRY(wtp_tx_end_packet(tx_ctrl))
+
+    //Load READ memory when necessary
+    if (!self->_read_mem_loaded)
+        WIO_TRY(wtp_load_read_mem(self))
 
     return WIO_OK;
 }
@@ -444,7 +452,7 @@ wtp_status_t wtp_trigger_event(
 /**
  * {@inheritDoc}
  */
-wtp_status_t wtp_after_read(
+wtp_status_t wtp_load_read_mem(
     wtp_t* self
 ) {
     //Read buffer
@@ -454,6 +462,17 @@ wtp_status_t wtp_after_read(
     //Read information queue
     wio_queue_t* read_info_queue = &tx_ctrl->_read_info_queue;
 
+    //No fragments to load
+    if (read_info_queue->size==0) {
+        self->_read_mem_loaded = false;
+        //Set the first byte of the Read buffer to WTP_PKT_END
+        self->_read_mem[0] = WTP_PKT_END;
+
+        return WIO_OK;
+    }
+    //Set Read memory loaded flag
+    self->_read_mem_loaded = true;
+
     //Get next READ OpSpec size
     wtp_tx_read_info_t* read_info = WIO_QUEUE_END(read_info_queue, wtp_tx_read_info_t);
     uint8_t read_size = read_info->_size;
@@ -462,58 +481,51 @@ wtp_status_t wtp_after_read(
     //Pop read information when necessary
     if (read_info->_n_reads==0)
         WIO_TRY(wio_queue_pop(read_info_queue, NULL))
-    //Nothing to send
-    if (read_size==0)
-        return WIO_OK;
     //Initialize read buffer
     WIO_TRY(wio_buf_init(read_buf, self->_read_mem, read_size))
 
     //Data fragments queue
     wio_queue_t* fragments_queue = &tx_ctrl->_fragments_queue;
+    //Send fragment
+    wtp_tx_fragment_t* send_fragment = NULL;
 
-    //Write message data to stream
-    while (true) {
-        //Send fragment
-        wtp_tx_fragment_t* send_fragment = NULL;
+    uint8_t queue_index = fragments_queue->end;
+    //Try to find existing data fragment to send
+    for (uint8_t i=0;i<fragments_queue->size;i++) {
+        wtp_tx_fragment_t* fragment = WIO_QUEUE_AT(fragments_queue, wtp_tx_fragment_t, queue_index);
 
-        uint8_t queue_index = fragments_queue->end;
-        //Try to find existing data fragment to send
-        for (uint8_t i=0;i<fragments_queue->size;i++) {
-            wtp_tx_fragment_t* fragment = WIO_QUEUE_AT(fragments_queue, wtp_tx_fragment_t, queue_index);
-
-            if (fragment->_need_send) {
-                send_fragment = fragment;
-                break;
-            }
-
-            //Update queue index
-            queue_index++;
-            if (queue_index>=fragments_queue->capacity)
-                queue_index = 0;
-        }
-        //Try to make new data fragment to send
-        if (!send_fragment) {
-            //TODO: Restore message buffer cursor
-            WIO_TRY(wtp_tx_make_fragment(tx_ctrl, tx_ctrl->_read_size, &send_fragment))
-        }
-        //No more fragments to send
-        if (!send_fragment)
+        if (fragment->_need_send) {
+            send_fragment = fragment;
             break;
-
-        //Write packet header
-        if (send_fragment->_msg_size) {
-            WIO_TRY(wio_write(read_buf, &WTP_PKT_BEGIN_MSG, 1))
-            WIO_TRY(wio_write(read_buf, &send_fragment->_msg_size, 2))
-        } else {
-            WIO_TRY(wio_write(read_buf, &WTP_PKT_CONT_MSG, 1))
         }
-        WIO_TRY(wio_write(read_buf, &send_fragment->_seq_num, 2))
-        WIO_TRY(wio_write(read_buf, &send_fragment->_size, 1))
-        //Write packet data
-        WIO_TRY(wio_write(read_buf, send_fragment->_data, send_fragment->_size))
 
-        //TODO: Set fragment timeout
+        //Update queue index
+        queue_index++;
+        if (queue_index>=fragments_queue->capacity)
+            queue_index = 0;
     }
+    //Try to make new data fragment to send
+    if (!send_fragment)
+        WIO_TRY(wtp_tx_make_fragment(tx_ctrl, tx_ctrl->_read_size, &send_fragment))
+    //No more fragments to send
+    if (!send_fragment)
+        return WIO_OK;
+
+    //Write packet header
+    if (send_fragment->_msg_size) {
+        WIO_TRY(wio_write(read_buf, &WTP_PKT_BEGIN_MSG, 1))
+        WIO_TRY(wio_write(read_buf, &send_fragment->_msg_size, 2))
+    } else {
+        WIO_TRY(wio_write(read_buf, &WTP_PKT_CONT_MSG, 1))
+    }
+    WIO_TRY(wio_write(read_buf, &send_fragment->_seq_num, 2))
+    WIO_TRY(wio_write(read_buf, &send_fragment->_size, 1))
+    //Write packet data
+    WIO_TRY(wio_write(read_buf, send_fragment->_data, send_fragment->_size))
+    //Write end packet byte (Ignore failure)
+    wio_write(read_buf, &WTP_PKT_END, 1);
+
+    //TODO: Set fragment timeout
 
     return WIO_OK;
 }
@@ -522,8 +534,7 @@ wtp_status_t wtp_after_read(
  * {@inheritDoc}
  */
 wtp_status_t wtp_handle_blockwrite(
-    wtp_t* self,
-    uint16_t size
+    wtp_t* self
 ) {
     //Write status
     wtp_status_t status;
@@ -532,8 +543,13 @@ wtp_status_t wtp_handle_blockwrite(
     //Packet type
     wtp_pkt_t pkt_type;
 
+    //BlockWrite size
+    uint16_t blockwrite_size = *self->_write_mem;
+    //BlockWrite memory
+    uint8_t* blockwrite_mem = self->_write_mem+1;
+
     //Initialize write buffer
-    WIO_TRY(wio_buf_init(write_buf, self->_write_mem, size))
+    WIO_TRY(wio_buf_init(write_buf, blockwrite_mem, blockwrite_size))
     //Read packets
     while (true) {
         //Read packet type
@@ -558,54 +574,6 @@ wtp_status_t wtp_handle_blockwrite(
             return WTP_ERR_UNSUPPORT_OP;
         WIO_TRY(handler(self, write_buf))
     }
-
-    return WIO_OK;
-}
-
-/**
- * {@inheritDoc}
- */
-wtp_status_t wtp_before_do_rfid(
-    wtp_t* self
-) {
-    //Update counter
-    self->_do_rfid_counter++;
-    //Triggered every 16 RFID operations
-    if (self->_do_rfid_counter%16!=1)
-        return WIO_OK;
-
-    //Send packet buffer
-    wio_buf_t* pkt_buf = &self->_tx_ctrl._pkt_buf;
-    //No packet to write
-    if (pkt_buf->pos_a==pkt_buf->pos_b)
-        return WIO_OK;
-
-    //EPC buffer
-    wio_buf_t* epc_buf = &self->_epc_buf;
-    //Packet size
-    uint8_t pkt_size;
-
-    //Reset EPC buffer
-    WIO_TRY(wio_reset(epc_buf))
-
-    //Fill EPC buffer with data packets
-    while (pkt_buf->pos_a<pkt_buf->pos_b) {
-        //Packet size
-        pkt_size = *(pkt_buf->buffer+pkt_buf->pos_a);
-
-        //Exceeds EPC capacity
-        if (epc_buf->pos_a+pkt_size>epc_buf->size)
-            break;
-        //Skip packet size
-        pkt_buf->pos_a++;
-        //Copy packet data to EPC memory
-        WIO_TRY(wio_copy(pkt_buf, epc_buf, pkt_size))
-    }
-    //Write WTP_PKT_END (Ignore failure)
-    wio_write(epc_buf, &WTP_PKT_END, 1);
-    //Reset packet buffer if it's empty
-    if (pkt_buf->pos_a==pkt_buf->pos_b)
-        WIO_TRY(wio_reset(pkt_buf))
 
     return WIO_OK;
 }

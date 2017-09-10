@@ -11,15 +11,15 @@ typedef struct wtp {
     //Uplink state
     wtp_link_state_t _uplink_state;
 
-    //Do RFID counter
-    uint8_t _do_rfid_counter;
-
     //EPC buffer
     wio_buf_t _epc_buf;
     //Read memory
     uint8_t* _read_mem;
     //Write memory
     uint8_t* _write_mem;
+
+    //Read memory loaded flag
+    bool _read_mem_loaded;
 
     //Transmit control instance
     wtp_tx_ctrl_t _tx_ctrl;
@@ -147,11 +147,11 @@ extern wtp_status_t wtp_trigger_event(
 );
 
 /**
- * Called after a RFID READ operation completed.
+ * Load RFID READ memory for WTP communication.
  *
  * @param self WTP endpoint instance
  */
-extern wtp_status_t wtp_after_read(
+extern wtp_status_t wtp_load_read_mem(
     wtp_t* self
 );
 
@@ -159,18 +159,16 @@ extern wtp_status_t wtp_after_read(
  * Handle RFID BLOCKWRITE operation.
  *
  * @param self WTP endpoint instance
- * @param size BLOCKWRITE data size
  */
 extern wtp_status_t wtp_handle_blockwrite(
-    wtp_t* self,
-    uint16_t size
+    wtp_t* self
 );
 
 /**
- * Called before a "WISP_doRFID()" call.
+ * Start WTP RFID loop.
  *
  * @param self WTP endpoint instance
  */
-extern wtp_status_t wtp_before_do_rfid(
+extern wtp_status_t wtp_start_rfid_loop(
     wtp_t* self
 );

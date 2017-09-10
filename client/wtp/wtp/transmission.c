@@ -115,11 +115,13 @@ wtp_status_t wtp_tx_add_msg(
     //READ information queue
     wio_queue_t* read_info_queue = &self->_read_info_queue;
 
+    //Payload size per Read
+    uint16_t payload_size = self->_read_size-6;
     //Number of READ OpSpecs needed
-    uint8_t n_reads = (uint8_t)(size/self->_read_size+1);
+    uint8_t n_reads = (uint8_t)(size/payload_size+1);
     //Create READ OpSpec information
     wtp_tx_read_info_t read_info;
-    read_info._size = self->_read_size;
+    read_info._size = (n_reads==1)?(size+6):self->_read_size;
     read_info._n_reads = n_reads;
     //Push into READ information queue
     WIO_TRY(wio_queue_push(read_info_queue, &read_info))
@@ -152,18 +154,12 @@ wtp_status_t wtp_tx_make_fragment(
     uint16_t msg_size;
     WIO_TRY(wio_read(msg_buf, &msg_size, 2))
 
-    //Message ends queue
-    wio_queue_t* msg_ends_queue = &self->_msg_ends_queue;
-
     //Load next message data into fragment
     if (self->_msg_fragmented>=msg_size) {
         //Update message begin
         self->_msg_begin_seq += msg_size;
         //Update fragmented position
         self->_msg_fragmented = 0;
-
-        //Add message end
-        WIO_TRY(wio_queue_push(msg_ends_queue, &self->_msg_begin_seq))
 
         //Skip previous message data
         WIO_TRY(wio_free(msg_buf, msg_size))
@@ -177,6 +173,16 @@ wtp_status_t wtp_tx_make_fragment(
         WIO_TRY(wio_read(msg_buf, &msg_size, 2))
     }
 
+    if (self->_msg_fragmented==0) {
+        //Message ends queue
+        wio_queue_t* msg_ends_queue = &self->_msg_ends_queue;
+        //Message end
+        uint16_t msg_end = self->_msg_begin_seq+msg_size;
+
+        //Add message end to queue
+        WIO_TRY(wio_queue_push(msg_ends_queue, &msg_end))
+    }
+
     //Sequence number and fragmented position
     uint16_t msg_fragmented = self->_msg_fragmented;
     //Sequence number
@@ -184,7 +190,7 @@ wtp_status_t wtp_tx_make_fragment(
 
     //Maximum packet data size using different criterion
     //(Header size is 6 for WTP_PKT_BEGIN_MSG and 4 for WTP_PKT_CONT_MSG)
-    uint16_t max_avail = avail_size-(msg_fragmented==0)?6:4;
+    uint16_t max_avail = avail_size-((msg_fragmented==0)?6:4);
     uint16_t max_msg = msg_size-msg_fragmented;
     uint16_t max_window = self->_seq_num+self->_window_size-seq_num;
     //Fragment data size
@@ -233,7 +239,7 @@ wtp_status_t wtp_tx_handle_ack(
     //Fragments queue
     wio_queue_t* fragments_queue = &self->_fragments_queue;
     //Number of fragments to remove
-    uint8_t n_fragments;
+    uint8_t n_fragments = 0;
     //Current queue index
     uint8_t queue_index = fragments_queue->end;
 
@@ -245,7 +251,7 @@ wtp_status_t wtp_tx_handle_ack(
 
         //No fragment to acknowledge or sequence number not at fragments border
         if (fragment_end>seq_num)
-            return WIO_ERR_INVALID;
+            return WIO_OK;
         //Update number of fragments
         n_fragments++;
         //End of acknowledged range
@@ -268,7 +274,7 @@ wtp_status_t wtp_tx_handle_ack(
         //Next fragment
         wtp_tx_fragment_t fragment;
         //Pop fragment from queue
-        WIO_TRY(wio_queue_pop(msg_ends_queue, &fragment))
+        WIO_TRY(wio_queue_pop(fragments_queue, &fragment))
         //Fragment end
         uint16_t fragment_end = fragment._seq_num+fragment._size;
 
@@ -458,11 +464,12 @@ wtp_status_t wtp_rx_handle_packet(
     fragment_a = self->_fragments_begin;
 
     //Move acknowledged message data
-    memmove(
-        msg_data_buf->buffer,
-        msg_data_buf->buffer+msg_data_buf->pos_a,
-        msg_data_buf->pos_b-msg_data_buf->pos_a
-    );
+    if (msg_data_buf->pos_b!=msg_data_buf->pos_a)
+        memmove(
+            msg_data_buf->buffer,
+            msg_data_buf->buffer+msg_data_buf->pos_a,
+            msg_data_buf->pos_b-msg_data_buf->pos_a
+        );
     //Update read and write cursor position
     msg_data_buf->pos_b -= msg_data_buf->pos_a;
     msg_data_buf->pos_a = 0;
