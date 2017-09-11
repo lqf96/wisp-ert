@@ -38,14 +38,12 @@ extern ert_status_t ert_close(
  * Read data from file.
  *
  * @param fd File descriptor
- * @param buf Read data
  * @param size Data size
  * @param cb_data Callback closure data
  * @param cb Callback
  */
 extern ert_status_t ert_read(
     int fd,
-    void* buf,
     size_t size,
     void* cb_data,
     wio_callback_t cb
@@ -62,7 +60,7 @@ extern ert_status_t ert_read(
  */
 extern ert_status_t ert_write(
     int fd,
-    void* buf,
+    const void* buf,
     size_t size,
     void* cb_data,
     wio_callback_t cb

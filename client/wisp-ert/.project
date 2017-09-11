@@ -3,8 +3,6 @@
 	<name>wisp-ert</name>
 	<comment></comment>
 	<projects>
-		<project>wisp-base</project>
-		<project>wtp</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
