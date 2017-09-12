@@ -86,9 +86,9 @@ static WIO_CALLBACK(ert_enter_main) {
  */
 static WIO_CALLBACK(ert_on_recv) {
     //Keep receiving data from WTP endpoint
-    WIO_TRY(wtp_recv(ert_wtp_ep, data, ert_on_recv))
+    WIO_TRY(wtp_recv(ert_wtp_ep, NULL, ert_on_recv))
     //Call u-RPC data received callback
-    WIO_TRY(urpc_on_recv(data, status, result))
+    WIO_TRY(urpc_on_recv(ert_rpc_ep, status, result))
 
     return WIO_OK;
 }
@@ -98,7 +98,7 @@ static WIO_CALLBACK(ert_on_recv) {
  */
 static WIO_CALLBACK(ert_on_connect) {
     //Keep receiving data from WTP endpoint
-    WIO_TRY(wtp_recv(ert_wtp_ep, ert_rpc_ep, ert_on_recv))
+    WIO_TRY(wtp_recv(ert_wtp_ep, NULL, ert_on_recv))
     //Load ERT constants
     WIO_TRY(urpc_call(
         ert_rpc_ep,

@@ -3,8 +3,6 @@
 
 ; Get machine context
 getmcontext:
-    ; Save stack pointer
-    MOVX SP, 4(R12)
     ; Save general purpose registers
     MOVX R4, 8(R12)
     MOVX R5, 12(R12)
@@ -17,6 +15,10 @@ getmcontext:
     MOVX R13, 44(R12)
     MOVX R14, 48(R12)
     MOVX R15, 52(R12)
+    ; Save stack pointer
+    MOVX SP, R7
+    ADDA #4, R7
+    MOVX R7, 4(R12)
     ; Return value for machine context
     MOVX #1, 40(R12)
     ; Program counter

@@ -13,9 +13,10 @@ void makecontext(
     //Variable arguments list
     va_list va_args;
     //Machine context
+    stack_t* stack = &ctx->uc_stack;
     mcontext_t* mctx = &ctx->uc_mcontext;
     //Stack pointer
-    uint32_t* sp = ctx->uc_stack.ss_sp;
+    uint32_t* sp = stack->ss_sp+stack->ss_size-sizeof(uint32_t);
 
     va_start(va_args, argc);
     //Copy arguments to registers or to stack
@@ -48,7 +49,7 @@ void makecontext(
             default: {
                 *sp = arg;
                 //Update stack pointer
-                sp++;
+                sp--;
 
                 break;
             }
@@ -59,7 +60,7 @@ void makecontext(
     //Push return address onto stack
     *sp = 0;
     //Update stack pointer
-    sp++;
+    sp--;
     //Set stack pointer
     mctx->sp = (uint32_t)sp;
 

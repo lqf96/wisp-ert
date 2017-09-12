@@ -28,10 +28,10 @@ static WIO_CALLBACK(ert_fs_rpc_cb) {
         _op_result[1] = rpc_results[1][1];
 
         //Operation succeed
-        if (op_result>0) {
+        if (op_result>=0) {
             //Callback is invoked with read data for "ert_read()"
             //or int16_t return value for other calls
-            void* cb_result = (n_results==1)?(&op_result):(rpc_results[2]);
+            void* cb_result = (n_results==1)?_op_result:(rpc_results[2]);
 
             //Invoke wrapped callback
             closure->func(closure->data, WIO_OK, cb_result);
@@ -101,7 +101,7 @@ ert_status_t ert_close(
     //Do u-RPC call
     urpc_call(
         ert_rpc_ep,
-        ert_func_open,
+        ert_func_close,
         URPC_SIG(1, URPC_TYPE_I16),
         URPC_ARG(&fd),
         closure,
@@ -162,7 +162,7 @@ ert_status_t ert_write(
     //Do u-RPC call
     urpc_call(
         ert_rpc_ep,
-        ert_func_open,
+        ert_func_write,
         URPC_SIG(2, URPC_TYPE_I16, URPC_TYPE_VARY),
         URPC_ARG(&fd, URPC_VARY_CONST(buf, size)),
         closure,
