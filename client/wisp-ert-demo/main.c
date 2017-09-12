@@ -1,37 +1,34 @@
-#include "wio.h"
-#include "wisp-base.h"
+#include <fcntl.h>
+#include <ert/fs.h>
+#include <ert/runtime.h>
 
-//ERT user code entry point
-wio_status_t ert_main(int argc, char** argv) {
-    return WIO_OK;
-}
+void ert_main() {
+    //Status
+    ert_status_t status;
+    //File descriptor
+    int16_t fd;
+    //Placeholder variable
+    int16_t _;
 
-bool led_state = false;
-wio_timer_t timer;
+    //Open a file
+    ERT_AWAIT(status, int16_t, fd, ert_open, "./test.txt", O_CREAT|O_RDWR, 0644)
+    if (status!=0)
+        goto demo_end;
 
-WIO_CALLBACK(toggle_led) {
-    if (led_state) {
-        BITCLR(PLED1OUT,PIN_LED1);
-        led_state = false;
-    } else {
-        BITSET(PLED1OUT,PIN_LED1);
-        led_state = true;
-    }
+    //Read file
+    /*
+    ERT_AWAIT(status, int16_t, _, ert_read, fd, 5)
+    if (status!=0)
+        goto demo_end;
+    */
+    //Write to file
+    ERT_AWAIT(status, int16_t, _, ert_write, fd, "12345", 5)
+    if (status!=0)
+        goto demo_end;
 
-    wio_set_timeout(&timer, 1000, NULL, toggle_led);
-
-    return WIO_OK;
-}
-
-void main(void) {
-    wio_timer_t timer;
-
-    WISP_init();
-
-    wio_timer_init(&timer);
-    wio_set_timeout(&timer, 2, NULL, toggle_led);
-
-    wio_init();
-
-    while (true);
+    //Close file
+    ERT_AWAIT(status, int16_t, _, ert_close, fd)
+demo_end:
+    //Suspend user context
+    ert_user_suspend(NULL, 0, NULL);
 }

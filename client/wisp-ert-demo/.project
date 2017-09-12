@@ -4,6 +4,8 @@
 	<comment></comment>
 	<projects>
 		<project>wisp-base</project>
+		<project>wtp</project>
+		<project>wisp-ert</project>
 	</projects>
 	<buildSpec>
 		<buildCommand>
