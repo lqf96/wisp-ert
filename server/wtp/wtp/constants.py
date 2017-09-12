@@ -58,12 +58,12 @@ WTP_SEQ_MAX = 0x10000
 # WTP previous EPC size
 WTP_PREV_EPC_SIZE = 3
 
-# WISP initialize number of words per OpSpec
-WISP_OPSPEC_INIT = 12
-# WISP minimum number of words per OpSpec
-WISP_OPSPEC_MIN = 4
-# WISP maximum number of words per OpSpec
-WISP_OPSPEC_MAX = 16
+# WTP initial size per OpSpec
+WTP_OPSPEC_INIT = 24
+# WISP minimum size per OpSpec
+WTP_OPSPEC_MIN = 8
+# WISP maximum size per OpSpec
+WTP_OPSPEC_MAX = 30
 
 # Maximum OpSpecs in 1 AccessSpec
 LLRP_N_OPSPECS_MAX = 1 #4

@@ -1,13 +1,18 @@
 from __future__ import absolute_import, unicode_literals
-import functools
+import functools, logging
 from six.moves import range
 from twisted.internet.defer import Deferred
 
 import wtp.constants as consts
 from wtp.util import EventTarget, ChecksumStream
 from wtp.transmission import SlidingWindowTxControl, SlidingWindowRxControl
-from wtp.cong_ctrl import SlidingWindowOpSpecControl, SlidingWindowCongControl
+from wtp.cong_ctrl import OpSpecSizeControl
 from wtp.llrp_util import read_opspec, write_opspec
+
+# Module logger
+_logger = logging.getLogger(__name__)
+# Logger level
+_logger.setLevel(logging.DEBUG)
 
 class WTPConnection(EventTarget):
     """ WTP connection class. """
@@ -24,7 +29,7 @@ class WTPConnection(EventTarget):
         # Transmission control tools
         self._tx_ctrl = SlidingWindowTxControl(
             reactor=self.server._reactor,
-            write_size=consts.WISP_OPSPEC_INIT*2,
+            write_size=consts.WTP_OPSPEC_INIT,
             window_size=64,
             checksum_func=checksum_func,
             checksum_type=checksum_type,
@@ -35,14 +40,10 @@ class WTPConnection(EventTarget):
             window_size=64
         )
         # Congestion control tools
-        self._opspec_ctrl = SlidingWindowOpSpecControl(
-            read_words=consts.WISP_OPSPEC_INIT,
-            write_words=consts.WISP_OPSPEC_INIT
+        self._opspec_ctrl = OpSpecSizeControl(
+            read_size=consts.WTP_OPSPEC_INIT,
+            write_size=consts.WTP_OPSPEC_INIT
         )
-        self._tx_cong_ctrl = SlidingWindowCongControl(
-        )
-        # OpSpec control counter
-        self._opspec_ctrl_counter = 0
         # Receive messages and deferreds
         self._recv_msgs = []
         self._recv_deferreds = []
@@ -215,9 +216,9 @@ class WTPConnection(EventTarget):
             if self._read_opspec_sizes:
                 # Read size
                 read_size = self._read_opspec_sizes.pop(0)
-                # Update OpSpecs list and OpSpec control
+                # Update OpSpecs list and OpSpec size control
                 opspecs.append(read_opspec(read_size, opspec_id))
-                """self._opspec_ctrl.add_read_opspec(read_size//2)"""
+                self._opspec_ctrl.add_read(read_size)
                 # Update OpSpec ID
                 opspec_id += 1
             if opspec_id>=consts.LLRP_N_OPSPECS_MAX:
@@ -225,11 +226,9 @@ class WTPConnection(EventTarget):
             # Add a Write OpSpec
             write_data = self._tx_ctrl.get_write_data()
             if write_data:
-                # Write OpSpec
-                write_spec = write_opspec(write_data, opspec_id)
-                # Update OpSpecs list and OpSpec control
-                opspecs.append(write_spec)
-                """self._opspec_ctrl.add_write_opspec(write_spec["WriteDataWordCount"])"""
+                # Update OpSpecs list and OpSpec size control
+                opspecs.append(write_opspec(write_data, opspec_id))
+                self._opspec_ctrl.add_write(len(write_data))
                 # Update OpSpec ID
                 opspec_id += 1
             if opspec_id>=consts.LLRP_N_OPSPECS_MAX:
@@ -244,31 +243,36 @@ class WTPConnection(EventTarget):
             def send_access_spec_cb(opspec_results):
                 # Set ongoing AccessSpec flag
                 self._ongoing_access_spec = False
-                # Sort OpSpec results by OpSpec ID
-                """opspec_results.sort(key=lambda opspec: opspec["ID"])
-                # Report Read or Write/BlockWrite OpSpec result to OpSpec control
-                for opspec in opspec_results:
-                    # Write/BlockWrite
-                    if "NumWordsWritten" in opspec:
-                        # Number of words written
-                        write_words = opspec["NumWordsWritten"]
-                        # Update OpSpec control and Write/BlockWrite size
-                        new_write_words = self._opspec_ctrl.report_write_result(write_words)
-                        self._tx_ctrl.write_size = new_write_words*2
-                    # TODO: Read
-                    else:
-                        # Number of words
-                        read_words = opspec["WordCount"]
-                        # Update OpSpec control
-                        new_read_words = self._opspec_ctrl.report_read_result(read_words)
-                        # Update Read size at WISP side every 16 Read OpSpec
-                        self._opspec_ctrl_counter += 1
-                        if self._opspec_ctrl_counter%16==0:
-                            # Build set parameter packet
+                try:
+                    # Sort OpSpec results by OpSpec ID
+                    opspec_results.sort(key=lambda opspec: opspec["OpSpecID"])
+                    # Report result to OpSpec size control
+                    _logger.debug("Reporting OpSpec results")
+                    for opspec in opspec_results:
+                        # Succeeded or not
+                        succeeded = opspec["Result"]==0
+                        # Write/BlockWrite
+                        if "NumWordsWritten" in opspec:
+                            # Size of data written
+                            actual_size = opspec["NumWordsWritten"]*2
+                            # Update OpSpec size control
+                            self._opspec_ctrl.report_write_result(succeeded, actual_size)
+                            # Update Write/BlockWrite size
+                            self._tx_ctrl.write_size = self._opspec_ctrl.write_size
+                        # Read
+                        else:
+                            # Size of data read
+                            actual_size = opspec["ReadDataWordCount"]*2
+                            # Update OpSpec size control and Read size
+                            self._opspec_ctrl.report_read_result(succeeded, actual_size)
+                            """# Build set parameter packet
                             pkt_stream = self._build_header(consts.WTP_PKT_SET_PARAM)
                             pkt_stream.write_data("BB", consts.WTP_PARAM_READ_SIZE, new_read_words*2)
                             # Add to transmission control
                             self._tx_ctrl.add_packet(pkt_stream.getvalue())"""
+                except:
+                    import traceback
+                    traceback.print_exc()
                 # Next AccessSpec sending
                 self._request_access_spec()
             d.addCallback(send_access_spec_cb)
