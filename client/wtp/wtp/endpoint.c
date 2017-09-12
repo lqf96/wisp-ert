@@ -216,8 +216,6 @@ static wtp_status_t wtp_handle_set_param(
     //Read parameter code
     wtp_param_t param_code;
     WIO_TRY(wio_read(buf, &param_code, 1))
-    //Verify checksum
-    WIO_TRY(wtp_verify_checksum(self, buf))
 
     switch (param_code) {
         //TODO: WTP_PARAM_WINDOW_SIZE
@@ -229,6 +227,9 @@ static wtp_status_t wtp_handle_set_param(
             //Suggested READ size
             uint8_t read_size;
             WIO_TRY(wio_read(buf, &read_size, 2))
+            //Verify checksum
+            WIO_TRY(wtp_verify_checksum(self, buf))
+
             //Set READ size
             self->_tx_ctrl._read_size = read_size;
 

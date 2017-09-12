@@ -4,7 +4,7 @@ from six.moves import range
 from twisted.internet.defer import Deferred
 
 import wtp.constants as consts
-from wtp.util import EventTarget, ChecksumStream
+from wtp.util import EventTarget, ChecksumStream, force_print_exc
 from wtp.transmission import SlidingWindowTxControl, SlidingWindowRxControl
 from wtp.cong_ctrl import OpSpecSizeControl
 from wtp.llrp_util import read_opspec, write_opspec
@@ -240,39 +240,38 @@ class WTPConnection(EventTarget):
         if opspecs:
             d = self.server._send_access_spec(self.wisp_id, opspecs)
             # Send AccessSpec callback
+            @force_print_exc
             def send_access_spec_cb(opspec_results):
                 # Set ongoing AccessSpec flag
                 self._ongoing_access_spec = False
-                try:
-                    # Sort OpSpec results by OpSpec ID
-                    opspec_results.sort(key=lambda opspec: opspec["OpSpecID"])
-                    # Report result to OpSpec size control
-                    _logger.debug("Reporting OpSpec results")
-                    for opspec in opspec_results:
-                        # Succeeded or not
-                        succeeded = opspec["Result"]==0
-                        # Write/BlockWrite
-                        if "NumWordsWritten" in opspec:
-                            # Size of data written
-                            actual_size = opspec["NumWordsWritten"]*2
-                            # Update OpSpec size control
-                            self._opspec_ctrl.report_write_result(succeeded, actual_size)
-                            # Update Write/BlockWrite size
-                            self._tx_ctrl.write_size = self._opspec_ctrl.write_size
-                        # Read
-                        else:
-                            # Size of data read
-                            actual_size = opspec["ReadDataWordCount"]*2
-                            # Update OpSpec size control and Read size
-                            self._opspec_ctrl.report_read_result(succeeded, actual_size)
-                            """# Build set parameter packet
-                            pkt_stream = self._build_header(consts.WTP_PKT_SET_PARAM)
-                            pkt_stream.write_data("BB", consts.WTP_PARAM_READ_SIZE, new_read_words*2)
-                            # Add to transmission control
-                            self._tx_ctrl.add_packet(pkt_stream.getvalue())"""
-                except:
-                    import traceback
-                    traceback.print_exc()
+                # Sort OpSpec results by OpSpec ID
+                opspec_results.sort(key=lambda opspec: opspec["OpSpecID"])
+                # OpSpec size control object
+                opspec_ctrl = self._opspec_ctrl
+                # Report result to OpSpec size control
+                _logger.debug("Reporting OpSpec results")
+                for opspec_result in opspec_results:
+                    # Succeeded or not
+                    succeeded = opspec_result["Result"]==0
+                    # Write/BlockWrite
+                    if "NumWordsWritten" in opspec_result:
+                        # Size of data written
+                        actual_size = opspec_result["NumWordsWritten"]*2
+                        # Update OpSpec size control
+                        opspec_ctrl.report_write_result(succeeded, actual_size)
+                        # Update Write/BlockWrite size
+                        self._tx_ctrl.write_size = opspec_ctrl.write_size
+                    # Read
+                    else:
+                        # Size of data read
+                        actual_size = opspec_result["ReadDataWordCount"]*2
+                        # Update OpSpec size control and Read size
+                        opspec_ctrl.report_read_result(succeeded, actual_size)
+                        # Build set parameter packet
+                        pkt_stream = self._build_header(consts.WTP_PKT_SET_PARAM)
+                        pkt_stream.write_data("BB", consts.WTP_PARAM_READ_SIZE, opspec_ctrl.read_size)
+                        # Add to transmission control
+                        self._tx_ctrl.add_packet(pkt_stream.getvalue())
                 # Next AccessSpec sending
                 self._request_access_spec()
             d.addCallback(send_access_spec_cb)

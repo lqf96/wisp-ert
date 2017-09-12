@@ -96,10 +96,11 @@ class WTPServer(EventTarget):
                 d.callback(opspec_results)
             # Handle Read
             for opspec_result in opspec_results:
-                opspec_id = opspec_result["OpSpecID"]
+                # OpSpec result status
+                op_status = opspec_result["Result"]
                 # Read data result
                 read_data = opspec_result.get("ReadData")
-                if read_data:
+                if op_status==0 and read_data:
                     stream = ChecksumStream(read_data)
                     self._handle_packets(stream, wisp_id)
     def _handle_packets(self, stream, wisp_id):

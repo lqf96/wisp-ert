@@ -1,9 +1,9 @@
 from __future__ import absolute_import, unicode_literals
-import struct, logging
-from functools import total_ordering
+import struct, logging, functools
 from io import BytesIO
 from contextlib import contextmanager
 from collections import Container
+from traceback import print_exc
 from six import text_type
 
 from wtp.error import WTPError
@@ -201,7 +201,7 @@ def _check_radix(x, y):
     if x._radix!=y._radix:
         raise ValueError("Radix mismatch.")
 
-@total_ordering
+@functools.total_ordering
 class CyclicInt(object):
     """ Cyclic integer type. """
     def __init__(self, value, radix):
@@ -379,14 +379,17 @@ class CyclicRange(object):
         else:
             pass
 
-def init_logging(stream):
+def force_print_exc(func):
     """
-    Initialize program logging.
+    Force printing traceback when exception is thrown.
+    (Used for debugging code inside Twisted deferred object)
 
-    :param stream: Output stream to which the log is written
+    :param func: Function to wrap
     """
-    # Set logging configuration
-    logging.basicConfig(
-        format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
-        stream=stream
-    )
+    @functools.wraps(func)
+    def wrapper(*args, **kwargs):
+        try:
+            return func(*args, **kwargs)
+        except:
+            print_exc()
+    return wrapper
