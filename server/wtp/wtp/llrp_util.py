@@ -70,7 +70,7 @@ def write_opspec(data, opspec_id=0):
         "WriteDataWordCount": n_words
     }
 
-def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
+def wisp_target_info(wisp_id, wisp_class=consts.RFID_WISP_CLASS):
     """
     Generate LLRP RFID target information from WISP ID.
 
@@ -93,7 +93,7 @@ def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
         # Length of mask in bits
         "MaskBitCount": 8*tag_mask_size,
         # Tag data for selection
-        "TagData": struct.pack(tag_mask_fmt, wisp_id, consts.WISP_CLASS),
+        "TagData": struct.pack(tag_mask_fmt, wisp_id, wisp_class),
         # Length of data in bits
         "DataBitCount": 8*tag_mask_size
     }

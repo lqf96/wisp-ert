@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-import struct
+import struct, logging
 from functools import total_ordering
 from io import BytesIO
 from contextlib import contextmanager
@@ -378,3 +378,15 @@ class CyclicRange(object):
         # TODO: Cyclic integer or other values
         else:
             pass
+
+def init_logging(stream):
+    """
+    Initialize program logging.
+
+    :param stream: Output stream to which the log is written
+    """
+    # Set logging configuration
+    logging.basicConfig(
+        format="%(asctime)s [%(name)s] [%(levelname)s] %(message)s",
+        stream=stream
+    )

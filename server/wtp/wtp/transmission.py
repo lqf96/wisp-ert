@@ -1,11 +1,16 @@
 from __future__ import absolute_import, unicode_literals
-import struct, functools
+import struct, functools, logging
 from six.moves import range
 from recordclass import recordclass
 from twisted.internet.defer import Deferred
 
 import wtp.constants as consts
 from wtp.util import CyclicInt, CyclicRange, ChecksumStream
+
+# Module logger
+_logger = logging.getLogger(__name__)
+# Logger level
+_logger.setLevel(logging.DEBUG)
 
 # Transmit fragment type
 TxFragment = recordclass("TxFragment", ["seq_num", "msg_size", "data", "d", "need_send"])
@@ -94,15 +99,11 @@ class SlidingWindowTxControl(object):
 
         :param fragment: Timeout data fragment
         """
-        try:
-            print("Retransmit seq=%d size=%d" % (fragment.seq_num, len(fragment.data)))
-            # Set need send flag
-            fragment.need_send = True
-            # Request sending AccessSpec
-            self.request_access_spec()
-        except:
-            import traceback
-            traceback.print_exc()
+        _logger.debug("Retransmit seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
+        # Set need send flag
+        fragment.need_send = True
+        # Request sending AccessSpec
+        self.request_access_spec()
     def add_msg(self, msg_data):
         """
         Add a new message for sending.
@@ -152,7 +153,7 @@ class SlidingWindowTxControl(object):
                     n_sent_msgs += 1
                     msg_ends.pop(0)
                 # Resolve fragment deferreds
-                print("Resolve seq=%d size=%d" % (fragment.seq_num, len(fragment.data)))
+                _logger.debug("Resolve seq=%d size=%d", fragment.seq_num, len(fragment.data))
                 fragment.d.callback(True)
         # Update sequence number
         self._seq_num = seq_num

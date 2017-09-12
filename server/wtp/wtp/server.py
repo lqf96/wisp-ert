@@ -1,4 +1,5 @@
 from __future__ import absolute_import, unicode_literals
+import logging
 from binascii import unhexlify
 from twisted.internet import reactor as inet_reactor
 from twisted.internet.defer import Deferred
@@ -9,6 +10,11 @@ from wtp.util import EventTarget, ChecksumStream, xor_checksum
 from wtp.llrp_util import read_opspec, write_opspec, wisp_target_info, access_stop_param
 from wtp.connection import WTPConnection
 from wtp.error import WTPError
+
+# Module logger
+_logger = logging.getLogger(__name__)
+# Logger level
+_logger.setLevel(logging.DEBUG)
 
 class WTPServer(EventTarget):
     """ WTP server type. """
@@ -22,8 +28,8 @@ class WTPServer(EventTarget):
             modulation="WISP5",
             start_inventory=True
         )
-        # Last seen EPC data
-        self._last_epc = {}
+        # Previous seen EPC data
+        self._prev_epcs = {}
         # WTP connections
         self._connections = {}
         # Reactor
@@ -57,22 +63,30 @@ class WTPServer(EventTarget):
         reports = llrp_msg.msgdict["RO_ACCESS_REPORT"]["TagReportData"]
         for report in reports:
             # Get and parse EPC data
-            epc_data = bytearray(unhexlify(report["EPC-96"]))
+            epc_hex = report["EPC-96"]
+            epc_data = bytearray(unhexlify(epc_hex))
             stream = ChecksumStream(epc_data)
             wisp_id, wisp_class = stream.read_data("BB")
             # Ignore non-WISP devices
-            if wisp_class!=consts.WISP_CLASS:
+            if wisp_class!=consts.RFID_WISP_CLASS:
                 continue
             # Read and handle WTP packets from EPC data only when EPC changed
-            if self._last_epc.get(wisp_id)!=epc_data:
-                print(report["EPC-96"])
-                self._last_epc[wisp_id] = epc_data
+            prev_epcs = self._prev_epcs.get(wisp_id)
+            if not prev_epcs:
+                prev_epcs = [bytearray(consts.RFID_EPC_SIZE)]*consts.WTP_PREV_EPC_SIZE
+                self._prev_epcs[wisp_id] = prev_epcs
+            if epc_data not in prev_epcs:
+                _logger.debug("New EPC %s for WISP #%d", epc_hex, wisp_id)
+                # Update previous EPCs
+                prev_epcs.pop(0)
+                prev_epcs.append(epc_data)
+                # Handle packets inside EPC
                 self._handle_packets(stream, wisp_id)
             # OpSpec results
             opspec_results = report.get("OpSpecResult")
             if not opspec_results:
                 continue
-            print(report)
+            _logger.debug("Tag report with OpSpec result: %s", report)
             # Ensure OpSpec results is container
             if not isinstance(opspec_results, list):
                 opspec_results = [opspec_results]

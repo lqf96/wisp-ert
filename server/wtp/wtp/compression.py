@@ -212,6 +212,7 @@ class FGKEncoder(object):
         # Initialize top node if no compression happened before
         if not self._top_node:
             self._top_node = self._zero_node = self._create_node()
+            self._zero_node.ch = FGK_NODE_ZERO
         while True:
             # Read next byte
             symbol = _in.read_data("H")
