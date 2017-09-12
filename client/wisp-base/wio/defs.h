@@ -57,10 +57,3 @@ static const wio_status_t WIO_ERR_ALREADY = 0x03;
 static const wio_status_t WIO_ERR_INVALID = 0x04;
 //Empty data structure
 static const wio_status_t WIO_ERR_EMPTY = 0x05;
-
-/**
- * Initialize WIO library
- *
- * @return WIO_OK
- */
-extern wio_status_t wio_init();

@@ -5,10 +5,8 @@
 static wio_timer_t* timer_begin = NULL;
 static wio_timer_t* timer_end = NULL;
 
-//Current time (In microseconds)
+//Current time (In seconds)
 uint32_t current_time = 0;
-//System timer (Used for polyfilling WISP firmware functions)
-wio_timer_t system_timer;
 
 /**
  * {@inheritDoc}
@@ -96,15 +94,6 @@ wio_status_t wio_wait4_timeout(
 }
 
 /**
- * Generate timer delay (WISP firmware polyfill function)
- *
- * @param time Time
- */
-void Timer_LooseDelay(uint16_t time) {
-    wio_wait4_timeout(&system_timer, time/LP_LSDLY_1MS);
-}
-
-/**
  * {@inheritDoc}
  */
 wio_status_t wio_clear_timeout(
@@ -133,7 +122,27 @@ wio_status_t wio_clear_timeout(
 /**
  * {@inheritDoc}
  */
+wio_status_t wio_timer_subsys_init() {
+    //Enable CCR0 interrupt
+    TA2CCTL0 = CCIE;
+    //Timer interrupt interval (20ms)
+    TA2CCR0 = LP_LSDLY_20MS;
+    //ACLK(=REFO), up mode, clear TAR
+    TA2CTL = TASSEL_1|MC_1|TACLR;
+
+    //Enable clock interrupt
+    __bis_SR_register(GIE);
+
+    return WIO_OK;
+}
+
+/**
+ * {@inheritDoc}
+ */
 void wio_timer_callback() {
+    //Update current time
+    current_time++;
+
     //Activate timers
     while (timer_begin&&(timer_begin->_time==current_time)) {
         wio_timer_t* timer = timer_begin;
@@ -149,7 +158,4 @@ void wio_timer_callback() {
         if (timer->cb)
             timer->cb(timer->cb_data, WIO_OK, NULL);
     }
-
-    //Update current time
-    current_time++;
 }

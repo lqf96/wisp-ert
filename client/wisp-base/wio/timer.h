@@ -72,6 +72,11 @@ extern wio_status_t wio_clear_timeout(
 );
 
 /**
+ * Initialize WIO timer subsystem.
+ */
+extern wio_status_t wio_timer_subsys_init();
+
+/**
  * Timer interrupt callback.
  */
 extern void wio_timer_callback();

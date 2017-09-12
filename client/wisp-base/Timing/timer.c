@@ -12,10 +12,6 @@
 //WIO timer interrupt callback
 extern void wio_timer_callback();
 
-//The implementation of function "Timer_LooseDelay()" has been moved to "wio/wio.c".
-//The function is only provided for compatibility purposes.
-//You are encouraged to use WIO timer APIs instead.
-
 //----------------------------------------------------------------------------
 
 ////////////////////////////////////////////////////////////////////////////

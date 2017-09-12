@@ -27,11 +27,4 @@
 #define LP_LSDLY_1MS    33      // ~1ms at 32.768kHz
 
 
-/*
- * Function prototypes
- */
-
-void Timer_LooseDelay(uint16_t usTime32kHz);
-
-
 #endif /*TIMER_H_*/
