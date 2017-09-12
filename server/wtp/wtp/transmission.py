@@ -99,7 +99,7 @@ class SlidingWindowTxControl(object):
 
         :param fragment: Timeout data fragment
         """
-        _logger.debug("Retransmit seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
+        _logger.debug("Scheduling retrasmission for seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
         # Set need send flag
         fragment.need_send = True
         # Request sending AccessSpec
@@ -186,7 +186,10 @@ class SlidingWindowTxControl(object):
             # Try to find existing data fragment to send
             for fragment in fragments:
                 if fragment.need_send:
+                    # Fragment to retransmit
+                    _logger.debug("Retransmit seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
                     send_fragment = fragment
+                    # Avoid being select multiple times
                     send_fragment.need_send = False
                     break
             # Try to make new data fragment to send

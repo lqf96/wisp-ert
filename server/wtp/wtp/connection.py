@@ -267,6 +267,7 @@ class WTPConnection(EventTarget):
                         actual_size = opspec_result["ReadDataWordCount"]*2
                         # Update OpSpec size control and Read size
                         opspec_ctrl.report_read_result(succeeded, actual_size)
+                        _logger.debug("Set client Read size to %d", opspec_ctrl.read_size)
                         # Build set parameter packet
                         pkt_stream = self._build_header(consts.WTP_PKT_SET_PARAM)
                         pkt_stream.write_data("BB", consts.WTP_PARAM_READ_SIZE, opspec_ctrl.read_size)

@@ -226,7 +226,7 @@ static wtp_status_t wtp_handle_set_param(
         case WTP_PARAM_READ_SIZE: {
             //Suggested READ size
             uint8_t read_size;
-            WIO_TRY(wio_read(buf, &read_size, 2))
+            WIO_TRY(wio_read(buf, &read_size, 1))
             //Verify checksum
             WIO_TRY(wtp_verify_checksum(self, buf))
 
