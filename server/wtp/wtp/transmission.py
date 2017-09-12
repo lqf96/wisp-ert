@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-import struct
+import struct, functools
 from six.moves import range
 from recordclass import recordclass
 from twisted.internet.defer import Deferred
@@ -68,7 +68,9 @@ class SlidingWindowTxControl(object):
         msg_fragmented = self._msg_fragmented
         seq_num = self._msg_begin+msg_fragmented
         # Maximum packet data size using different criterion
-        max_avail = avail_size-4
+        max_avail = avail_size-(6 if msg_fragmented==0 else 4)
+        if self.checksum_type:
+            max_avail -= struct.calcsize(self.checksum_type)
         max_msg = len(msg)-msg_fragmented
         max_window = self._seq_num+self.window_size-seq_num
         # Packet data size
@@ -86,16 +88,21 @@ class SlidingWindowTxControl(object):
             d=None,
             need_send=False
         )
-    def _handle_packet_timeout(self, fragment):
+    def _handle_packet_timeout(self, fragment, *args):
         """
         Handle data packet timeout.
 
         :param fragment: Timeout data fragment
         """
-        # Set need send flag
-        fragment.need_send = True
-        # Request sending AccessSpec
-        self.request_access_spec()
+        try:
+            print("Retransmit seq=%d size=%d" % (fragment.seq_num, len(fragment.data)))
+            # Set need send flag
+            fragment.need_send = True
+            # Request sending AccessSpec
+            self.request_access_spec()
+        except:
+            import traceback
+            traceback.print_exc()
     def add_msg(self, msg_data):
         """
         Add a new message for sending.
@@ -145,7 +152,8 @@ class SlidingWindowTxControl(object):
                     n_sent_msgs += 1
                     msg_ends.pop(0)
                 # Resolve fragment deferreds
-                fragment.d.callback(None)
+                print("Resolve seq=%d size=%d" % (fragment.seq_num, len(fragment.data)))
+                fragment.d.callback(True)
         # Update sequence number
         self._seq_num = seq_num
         return n_sent_msgs
@@ -167,8 +175,9 @@ class SlidingWindowTxControl(object):
             # OpSpec data will be too long
             if estimate_size>self.write_size:
                 return stream.getvalue()
-            # Write packet to stream
+            # Write packet and checksum to stream
             stream.write(packet)
+            stream.write_checksum()
         # Write message data to stream
         fragments = self._fragments
         while True:
@@ -177,6 +186,7 @@ class SlidingWindowTxControl(object):
             for fragment in fragments:
                 if fragment.need_send:
                     send_fragment = fragment
+                    send_fragment.need_send = False
                     break
             # Try to make new data fragment to send
             if not send_fragment:
@@ -203,7 +213,9 @@ class SlidingWindowTxControl(object):
             stream.write_checksum()
             # Set fragment timeout
             d = Deferred()
-            d.addTimeout(self.timeout, self._reactor, self._handle_packet_timeout)
+            d.addTimeout(self.timeout, self._reactor, onTimeoutCancel=functools.partial(
+                SlidingWindowTxControl._handle_packet_timeout, self, send_fragment
+            ))
             send_fragment.d = d
         # Return send data
         return stream.getvalue()
@@ -246,7 +258,7 @@ class SlidingWindowRxControl(object):
         # Begin of message
         msg_info = self._msg_info
         if new_msg_size:
-            new_msg_size = CyclicInt(new_msg_size)
+            new_msg_size = CyclicInt(new_msg_size, radix=consts.WTP_SEQ_MAX)
             with self.seq_num.as_zero():
                 i = 0
                 # Find position to insert new message information
@@ -254,7 +266,7 @@ class SlidingWindowRxControl(object):
                     if seq_num<msg_info[i].begin:
                         break
                 # Drop new message packet if it overlaps with declared messages
-                if seq_num+new_msg_size>msg_info[i].begin:
+                if i<len(msg_info) and seq_num+new_msg_size>msg_info[i].begin:
                     return []
                 # Insert new message information
                 msg_info.insert(i, RxMsgInfo(begin=seq_num, size=new_msg_size))
@@ -267,7 +279,7 @@ class SlidingWindowRxControl(object):
                 if seq_num<fragments[i].seq_num:
                     break
             # Drop data packet if it overlaps with other data fragments
-            if seq_num+len(data)>fragments[i].seq_num:
+            if i<len(fragments) and seq_num+len(data)>fragments[i].seq_num:
                 return []
             # Insert data fragment
             fragments.insert(i, RxFragment(seq_num=seq_num, data=data))

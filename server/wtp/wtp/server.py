@@ -12,7 +12,7 @@ from wtp.error import WTPError
 
 class WTPServer(EventTarget):
     """ WTP server type. """
-    def __init__(self, antennas=[1], n_tags_per_report=5, reactor=inet_reactor):
+    def __init__(self, antennas=[1], n_tags_per_report=1, reactor=inet_reactor):
         # Initialize base classes
         super(WTPServer, self).__init__()
         # LLRP factory
@@ -59,18 +59,20 @@ class WTPServer(EventTarget):
             # Get and parse EPC data
             epc_data = bytearray(unhexlify(report["EPC-96"]))
             stream = ChecksumStream(epc_data)
-            wisp_class, wisp_id = stream.read_data("BH")
+            wisp_id, wisp_class = stream.read_data("BB")
             # Ignore non-WISP devices
             if wisp_class!=consts.WISP_CLASS:
                 continue
             # Read and handle WTP packets from EPC data only when EPC changed
             if self._last_epc.get(wisp_id)!=epc_data:
+                print(report["EPC-96"])
                 self._last_epc[wisp_id] = epc_data
                 self._handle_packets(stream, wisp_id)
             # OpSpec results
             opspec_results = report.get("OpSpecResult")
             if not opspec_results:
                 continue
+            print(report)
             # Ensure OpSpec results is container
             if not isinstance(opspec_results, list):
                 opspec_results = [opspec_results]
@@ -100,7 +102,7 @@ class WTPServer(EventTarget):
             # Packet type
             packet_type = stream.read_data("B")
             # No more packets
-            if packet_type==consts.WTP_PKT_END:
+            if packet_type==None or packet_type==consts.WTP_PKT_END:
                 break
             # Open connection
             elif packet_type==consts.WTP_PKT_OPEN:
@@ -110,8 +112,8 @@ class WTPServer(EventTarget):
                     connection = self._connections[wisp_id] = WTPConnection(
                         server=self,
                         wisp_id=wisp_id,
-                        checksum_func=None,
-                        checksum_type=None
+                        checksum_func=xor_checksum,
+                        checksum_type="B"
                     )
                     # Handle packet in connection
                     connection._handle_packet(stream, packet_type)

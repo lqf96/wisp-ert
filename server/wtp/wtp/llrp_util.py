@@ -15,8 +15,9 @@ def read_opspec(data_size, opspec_id=0):
     """
     # Data size must be multiple of 2
     n_words, remainder = divmod(data_size, 2)
+    # Read extra byte when necessary
     if remainder!=0:
-        raise WTPError(consts.WTP_ERR_INVALID_SIZE)
+        n_words += 1
     # Read OpSpec
     return {
         "OpSpecID": opspec_id,
@@ -77,7 +78,7 @@ def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
     :returns: LLRP RFID target information
     """
     # Tag data mask format
-    tag_mask_fmt = "<BH"
+    tag_mask_fmt = "<BB"
     tag_mask_size = struct.calcsize(tag_mask_fmt)
     # WISP target information
     return {
@@ -92,7 +93,7 @@ def wisp_target_info(wisp_id, wisp_class=consts.WISP_CLASS):
         # Length of mask in bits
         "MaskBitCount": 8*tag_mask_size,
         # Tag data for selection
-        "TagData": struct.pack(tag_mask_fmt, wisp_class, wisp_id),
+        "TagData": struct.pack(tag_mask_fmt, wisp_id, consts.WISP_CLASS),
         # Length of data in bits
         "DataBitCount": 8*tag_mask_size
     }

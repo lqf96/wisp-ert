@@ -3,6 +3,7 @@ import struct
 from functools import total_ordering
 from io import BytesIO
 from contextlib import contextmanager
+from collections import Container
 from six import text_type
 
 from wtp.error import WTPError
@@ -56,8 +57,41 @@ class EventTarget(object):
             for handler in event_handlers:
                 handler(result)
 
-class ChecksumStream(BytesIO):
-    """ Stream with checksum functionality. """
+class DataStreamMixin(object):
+    """ Byte stream mix-in that can read or write basic Python values directly. """
+    def read_data(self, fmt, endian="<"):
+        """
+        Read binary data from stream with given format.
+
+        :param fmt: Binary data format
+        :returns: Read data
+        """
+        # Read format
+        read_fmt = endian+fmt
+        # Read data
+        read_data = self.read(struct.calcsize(read_fmt))
+        if not read_data:
+            return None
+        # Unpack data
+        result = struct.unpack(read_fmt, read_data)
+        # One result
+        if len(result)==1:
+            return result[0]
+        else:
+            return result
+    def write_data(self, fmt, *args, **kwargs):
+        """
+        Write binary data to stream with given format.
+
+        :param fmt: Binary data format
+        """
+        # Endianness
+        endian = kwargs.pop("endian", "<")
+        # Write data
+        self.write(struct.pack(endian+fmt, *args))
+
+class ChecksumStream(BytesIO, DataStreamMixin):
+    """ Data stream with checksum functionality. """
     def __init__(self, *args, **kwargs):
         # Checksum function
         self._checksum_func = kwargs.pop("checksum_func", None)
@@ -88,31 +122,6 @@ class ChecksumStream(BytesIO):
         # Throw checksum error if validation failed
         if read_checksum!=calc_checksum:
             raise WTPError(WTP_ERR_INVALID_CHECKSUM)
-    def read_data(self, fmt, endian="<"):
-        """
-        Read binary data from stream with given format.
-
-        :param fmt: Binary data format
-        :returns: Read data
-        """
-        # Read data
-        read_len = struct.calcsize(endian+fmt)
-        result = struct.unpack(endian+fmt, self.read(read_len))
-        # One result
-        if len(result)==1:
-            return result[0]
-        else:
-            return result
-    def write_data(self, fmt, *args, **kwargs):
-        """
-        Write binary data to stream with given format.
-
-        :param fmt: Binary data format
-        """
-        # Endianness
-        endian = kwargs.pop("endian", "<")
-        # Write data
-        self.write(struct.pack(endian+fmt, *args))
     def write_checksum(self):
         """
         Write checksum to stream.
@@ -126,12 +135,57 @@ class ChecksumStream(BytesIO):
         # Write checksum to stream
         self.write(struct.pack(self._checksum_type, checksum))
 
+class BitStream(DataStreamMixin):
+    """ Data stream that supports reading or writing bits to stream. """
+    def __init__(self):
+        # TODO: Bit stream
+        pass
+    def read(self, size):
+        """
+        Read data from bit stream.
+
+        :param size: Size of data to read
+        """
+        return self.read_bits(size*8)
+    def read_bits(self, n_bits):
+        """
+        Read bits from bit stream.
+
+        :param n_bits: Number of bits to read
+        """
+        # TODO: Read bit stream
+        pass
+    def write(self, data):
+        """
+        Write data to bit stream.
+
+        :param data: Data to write
+        """
+        self.write_bits(data, len(data)*8)
+    def write_bits(self, data, n_bits):
+        """
+        Write bits to bit stream.
+
+        :param data: Data to write
+        :param n_bits: Number of bits to write
+        """
+        # TODO: Write bit stream
+        pass
+    def getvalue(self):
+        """
+        Retrieve the entire content of the bit stream.
+        """
+        return bytes(self._buffer)
+
 def xor_checksum(buf):
     """
     Xor checksum function.
 
     :param buf: Buffer to calculate checksum
     """
+    # Convert buffer to byte array
+    buf = bytearray(buf)
+    # Calculate checksum
     checksum = 0
     for byte in buf:
         checksum ^= byte
@@ -278,12 +332,12 @@ class CyclicRange(object):
     """ Cyclic range type. """
     def __init__(self, x, radix, y=None, size=None):
         # Range end
-        if not y and not size:
+        if y==None and size==None:
             raise ValueError("Either y or size must be given to construct cyclic range.")
         y = y if y else x+size
         # Range bounds
-        self._x = x%radix
-        self._y = y%radix
+        self._x = int(x)%radix
+        self._y = int(y)%radix
         # Radix
         self._radix = radix
     def __eq__(self, other):

@@ -57,7 +57,7 @@ WTP_PARAM_READ_SIZE = 0x01
 WTP_SEQ_MAX = 0x10000
 
 # WISP class
-WISP_CLASS = 0x10
+WISP_CLASS = 0x51
 
 # WISP initialize number of words per OpSpec
 WISP_OPSPEC_INIT = 12
@@ -67,7 +67,7 @@ WISP_OPSPEC_MIN = 4
 WISP_OPSPEC_MAX = 16
 
 # Maximum OpSpecs in 1 AccessSpec
-LLRP_N_OPSPECS_MAX = 4
+LLRP_N_OPSPECS_MAX = 1 #4
 
 # EPC memory bank
 RFID_MB_EPC = 0x01
