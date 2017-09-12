@@ -1,10 +1,15 @@
 from __future__ import absolute_import, unicode_literals
-import os, errno, functools
+import os, errno, functools, logging
 from collections import OrderedDict
 from urpc import StringType, urpc_sig, U16, I16, VARY
 from urpc.util import AllocTable
 
 from wisp_ert.runtime import Service
+
+# Module logger
+_logger = logging.getLogger(__name__)
+# Logger level
+_logger.setLevel(logging.DEBUG)
 
 # System call function proxy
 def _proxy_sys(name):
@@ -17,7 +22,7 @@ def _proxy_sys(name):
     sys_func = getattr(os, name)
     # Proxy function
     def proxy(self, fd, *args):
-        print("Syscall %s" % name)
+        _logger.debug("Proxying %s system call", name)
         # Get and check file descriptor validity
         real_fd = self._fd_mapping.get(fd)
         if not real_fd:
@@ -52,8 +57,10 @@ class LocalFS(Service):
         """
         # Try to open the file
         try:
+            # Get real file path
             real_path = os.path.join(self._root_dir, path)
-            print("Opening: %s" % real_path)
+            _logger.debug("Opening file %s", real_path)
+            # Open file
             real_fd = os.open(real_path, flags, mode)
         except OSError as e:
             return -1*e.errno

@@ -1,7 +1,9 @@
 #! /usr/bin/env python
 from __future__ import unicode_literals
+import sys
 from argparse import ArgumentParser
 from sllurp.llrp import LLRP_PORT
+from wtp.util import init_logging
 
 from wisp_ert.util import setitem_keypath
 from wisp_ert.fs import LocalFS
@@ -9,8 +11,10 @@ from wisp_ert.runtime import Runtime
 
 # Only run in interactive mode
 if __name__=="__main__":
-    parser = ArgumentParser()
+    # Initialize logging
+    init_logging(stream=sys.stderr)
     # CLI arguments
+    parser = ArgumentParser()
     parser.add_argument("-s", "--server", type=str, help="Reader server IP", required=True)
     parser.add_argument("-a", "--antennas", type=str, help="Reader antennas to enable (Comma separated)", default="1")
     parser.add_argument("-p", "--port", type=int, help="Reader server port", default=LLRP_PORT)
@@ -30,7 +34,7 @@ if __name__=="__main__":
     options.update(extra_opt_ns)
     # Start runtime
     runtime = Runtime(**options)
-    runtime.add_service("fs", LocalFS, root_dir="/Users/lqf")
+    runtime.add_service("fs", LocalFS, root_dir="/Users/lqf/Playground/wisp-ert")
     runtime.start(
         server=options["server"],
         port=options["port"]

@@ -1,5 +1,5 @@
 from __future__ import absolute_import, unicode_literals
-import functools, struct
+import functools, struct, logging
 from abc import ABC, abstractproperty
 from six import iteritems
 from sllurp.llrp import LLRPClientFactory
@@ -7,6 +7,11 @@ from urpc import URPC, urpc_sig, StringType, urpc_type_repr, VARY
 from wtp import WTPServer
 
 from wisp_ert.util import not_implemented
+
+# Module logger
+_logger = logging.getLogger(__name__)
+# Logger level
+_logger.setLevel(logging.DEBUG)
 
 class Service(ABC):
     """ The WISP extended runtime service class. """
@@ -55,13 +60,11 @@ class Runtime(object):
 
         :param connection: New WTP connection
         """
-        print("new client: %s" % connection.wisp_id)
+        _logger.debug("New WISP ERT client: #%d", connection.wisp_id)
         # Create u-RPC endpoint for new client
-        def urpc_send(data):
-            print("u-RPC send: %s" % data)
-            connection.send(data)
+        # TODO: Remove u-RPC send
         rpc_ep = URPC(
-            send_callback=urpc_send
+            send_callback=connection.send
         )
         # Add service constants query function
         rpc_ep.add_func(
@@ -110,7 +113,6 @@ class Runtime(object):
         :param connection: WTP connection
         :param data: Received data
         """
-        print("u-RPC data: %s" % data)
         # Call u-RPC endpoint
         rpc_ep = self._services[connection]["_rpc"]
         rpc_ep.recv_callback(data)
