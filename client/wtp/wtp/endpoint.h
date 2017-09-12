@@ -21,6 +21,9 @@ typedef struct wtp {
     //Read memory loaded flag
     bool _read_mem_loaded;
 
+    //Packet begin position
+    uint16_t _pkt_begin;
+
     //Transmit control instance
     wtp_tx_ctrl_t _tx_ctrl;
     //Receive control instance
@@ -171,4 +174,29 @@ extern wtp_status_t wtp_handle_blockwrite(
  */
 extern wtp_status_t wtp_start_rfid_loop(
     wtp_t* self
+);
+
+/**
+ * Verify the checksum of received WTP packet
+ *
+ * @param self WTP endpoint instance
+ * @param write_buf WTP packets buffer
+ */
+extern wtp_status_t wtp_verify_checksum(
+    wtp_t* self,
+    wio_buf_t* write_buf
+);
+
+/**
+ * WTP Xor checksum function.
+ *
+ * @param mem Memory
+ * @param begin Begin index for checksum calculation
+ * @param end End index for checksum calculation
+ * @return Xor checksum for given range of memory
+ */
+extern uint8_t wtp_xor_checksum(
+    uint8_t* mem,
+    uint16_t begin,
+    uint16_t end
 );

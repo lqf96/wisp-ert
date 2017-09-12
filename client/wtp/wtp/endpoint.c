@@ -14,6 +14,9 @@ static wtp_status_t wtp_handle_open(
     wtp_t* self,
     wio_buf_t* buf
 ) {
+    //Verify checksum
+    WIO_TRY(wtp_verify_checksum(self, buf))
+
     wtp_tx_ctrl_t* tx_ctrl = &self->_tx_ctrl;
     //Packet buffer
     wio_buf_t* pkt_buf = &tx_ctrl->_pkt_buf;
@@ -44,6 +47,8 @@ static wtp_status_t wtp_handle_ack(
     //Sequence number
     uint16_t seq_num;
     WIO_TRY(wio_read(buf, &seq_num, 2))
+    //Verify checksum
+    WIO_TRY(wtp_verify_checksum(self, buf))
 
     //Connected acknowledgement
     if (self->_uplink_state==WTP_STATE_OPENING)
@@ -110,6 +115,8 @@ static wtp_status_t wtp_handle_msg_packet(
     uint8_t* payload = buf->buffer+buf->pos_a;
     //Update read cursor position
     buf->pos_a += payload_size;
+    //Verify checksum
+    WIO_TRY(wtp_verify_checksum(self, buf))
 
     //Handle packet with WTP receive control (Ignore errors)
     wtp_rx_handle_packet(
@@ -209,6 +216,8 @@ static wtp_status_t wtp_handle_set_param(
     //Read parameter code
     wtp_param_t param_code;
     WIO_TRY(wio_read(buf, &param_code, 1))
+    //Verify checksum
+    WIO_TRY(wtp_verify_checksum(self, buf))
 
     switch (param_code) {
         //TODO: WTP_PARAM_WINDOW_SIZE
@@ -260,6 +269,9 @@ wtp_status_t wtp_init(
 
     //Read memory loaded flag
     self->_read_mem_loaded = false;
+
+    //Initialize packet begin position
+    self->_pkt_begin = 0;
 
     //Transmit control memory unit
     uint16_t tx_mem_unit = tx_buf_size/4;
@@ -552,6 +564,9 @@ wtp_status_t wtp_handle_blockwrite(
     WIO_TRY(wio_buf_init(write_buf, blockwrite_mem, blockwrite_size))
     //Read packets
     while (true) {
+        //Set packet begin position
+        self->_pkt_begin = write_buf->pos_a;
+
         //Read packet type
         status = wio_read(write_buf, &pkt_type, 1);
         //No more packets
@@ -576,6 +591,41 @@ wtp_status_t wtp_handle_blockwrite(
     }
 
     return WIO_OK;
+}
+
+/**
+ * {@inheritDoc}
+ */
+wtp_status_t wtp_verify_checksum(
+    wtp_t* self,
+    wio_buf_t* write_buf
+) {
+    //Get packet end position
+    uint16_t pkt_end = write_buf->pos_a;
+    //Calculate checksum
+    uint8_t calc_checksum = wtp_xor_checksum(write_buf->buffer, self->_pkt_begin, pkt_end);
+
+    //Read checksum from buffer
+    uint8_t pkt_checksum;
+    WIO_TRY(wio_read(write_buf, &pkt_checksum, 1))
+
+    return (calc_checksum==pkt_checksum)?WIO_OK:WIO_ERR_INVALID;
+}
+
+/**
+ * {@inheritDoc}
+ */
+uint8_t wtp_xor_checksum(
+    uint8_t* mem,
+    uint16_t begin,
+    uint16_t end
+) {
+    uint8_t checksum = 0;
+
+    for (uint16_t i=begin;i<end;i++)
+        checksum ^= mem[i];
+
+    return checksum;
 }
 
 //WTP packet handlers
