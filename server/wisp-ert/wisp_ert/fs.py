@@ -1,5 +1,6 @@
 from __future__ import absolute_import, unicode_literals
 import os, errno, functools
+from collections import OrderedDict
 from urpc import StringType, urpc_sig, U16, I16, VARY
 from urpc.util import AllocTable
 
@@ -16,13 +17,15 @@ def _proxy_sys(name):
     sys_func = getattr(os, name)
     # Proxy function
     def proxy(self, fd, *args):
+        print("Syscall %s" % name)
         # Get and check file descriptor validity
         real_fd = self._fd_mapping.get(fd)
         if not real_fd:
             return -1*errno.EBADF
         # Call system function
         try:
-            return sys_func(real_fd, *args)
+            result = sys_func(real_fd, *args)
+            return 0 if result==None else result
         except OSError as e:
             return -1*e.errno
     return proxy
@@ -50,11 +53,12 @@ class LocalFS(Service):
         # Try to open the file
         try:
             real_path = os.path.join(self._root_dir, path)
+            print("Opening: %s" % real_path)
             real_fd = os.open(real_path, flags, mode)
         except OSError as e:
             return -1*e.errno
         # Add file descriptor to table
-        return self._fd_table.add(real_fd)
+        return self._fd_mapping.add(real_fd)
     # Close file
     @urpc_sig([I16], [I16])
     def close(self, fd):
@@ -69,7 +73,7 @@ class LocalFS(Service):
         if result:
             return result
         # Remove file descriptor from table
-        del self._fd_table[fd]
+        del self._fd_mapping[fd]
         return 0
     # Read file
     @urpc_sig([I16, U16], [I16, VARY])
@@ -83,7 +87,7 @@ class LocalFS(Service):
         result = self._read(fd, size)
         # Successful read
         if isinstance(result, bytes):
-            return len(result), result
+            return 0, result
         # Failed to read
         else:
             return result, b""
@@ -94,13 +98,18 @@ class LocalFS(Service):
     write = urpc_sig([I16, VARY], [I16], _proxy_sys("write"))
     lseek = urpc_sig([I16, I16, I16], [I16], _proxy_sys("lseek"))
     # ERT functions
-    functions = {
-        "open": open,
-        "close": close,
-        "read": read,
-        "write": write,
-        "lseek": lseek
-    }
+    @property
+    def functions(self):
+        """
+        Get ERT service functions.
+        """
+        return OrderedDict([
+            ("open", self.open),
+            ("close", self.close),
+            ("read", self.read),
+            ("write", self.write),
+            ("lseek", self.lseek)
+        ])
     # ERT constants
     constants = [
         # Open flags

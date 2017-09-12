@@ -38,6 +38,8 @@ class Runtime(object):
         """
         # Services
         self._services = {}
+        # Services factory
+        self._services_factory = {}
         # WTP connection to services mapping
         self._clients = {}
         # WTP endpoint
@@ -53,9 +55,13 @@ class Runtime(object):
 
         :param connection: New WTP connection
         """
+        print("new client: %s" % connection.wisp_id)
         # Create u-RPC endpoint for new client
+        def urpc_send(data):
+            print("u-RPC send: %s" % data)
+            connection.send(data)
         rpc_ep = URPC(
-            send_callback=connection.send
+            send_callback=urpc_send
         )
         # Add service constants query function
         rpc_ep.add_func(
@@ -66,8 +72,10 @@ class Runtime(object):
         )
         # Services instances for new client
         service_insts = {}
-        for name, service_factory in iteritems(self._services):
+        for name, service_factory in iteritems(self._services_factory):
             service = service_factory()
+            # Add service to instances
+            service_insts[name] = service
             # Add functions to u-RPC endpoint
             for name, func in iteritems(service.functions):
                 rpc_ep.add_func(func=func, name=name)
@@ -75,6 +83,9 @@ class Runtime(object):
         service_insts["_rpc"] = rpc_ep
         # Add to runtime client table
         self._services[connection] = service_insts
+        # Start receiving messages from WTP endpoint
+        wtp_recv_cb = functools.partial(Runtime._wtp_recv_cb, self, connection)
+        connection.recv().addCallback(wtp_recv_cb)
     def _service_constants(self, connection, name):
         """
         Get service C constants by service name.
@@ -92,6 +103,20 @@ class Runtime(object):
             consts_list.append(const)
         # Pack constants into binary formats
         return struct.pack(consts_repr, *consts_list)
+    def _wtp_recv_cb(self, connection, data):
+        """
+        WTP receive callback.
+
+        :param connection: WTP connection
+        :param data: Received data
+        """
+        print("u-RPC data: %s" % data)
+        # Call u-RPC endpoint
+        rpc_ep = self._services[connection]["_rpc"]
+        rpc_ep.recv_callback(data)
+        # Wait for next message
+        wtp_recv_cb = functools.partial(Runtime._wtp_recv_cb, self, connection)
+        connection.recv().addCallback(wtp_recv_cb)
     def add_service(self, name, factory, *args, **kwargs):
         """
         Add a service class to runtime.
@@ -102,8 +127,8 @@ class Runtime(object):
         :param kwargs: Keyword arguments to be passed to service factory
         """
         factory = functools.partial(factory, *args, **kwargs)
-        # Add to runtime services mapping
-        self._services[name] = factory
+        # Add to runtime services factories
+        self._services_factory[name] = factory
     def start(self, server, port):
         """
         Start WISP extended runtime.
