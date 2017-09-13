@@ -99,7 +99,7 @@ class SlidingWindowTxControl(object):
 
         :param fragment: Timeout data fragment
         """
-        _logger.debug("Scheduling retrasmission for seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
+        _logger.debug("Scheduling retransmission for seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
         # Set need send flag
         fragment.need_send = True
         # Request sending AccessSpec
