@@ -11,54 +11,63 @@ from wtp.llrp_util import read_opspec, write_opspec, wisp_target_info, access_st
 from wtp.connection import WTPConnection
 from wtp.error import WTPError
 
-# Module logger
+## Module logger
 _logger = logging.getLogger(__name__)
 # Logger level
 _logger.setLevel(logging.DEBUG)
 
 class WTPServer(EventTarget):
-    """ WTP server type. """
+    """!
+    @brief WTP server class.
+    """
     def __init__(self, antennas=[1], n_tags_per_report=1, reactor=inet_reactor):
+        """!
+        @brief WTP server constructor.
+
+        @param antennas Antennas to be enabled.
+        @param n_tags_per_report Number of tags per tag report.
+        @param reactor Twisted reactor.
+        """
         # Initialize base classes
         super(WTPServer, self).__init__()
-        # LLRP factory
+        ## LLRP factory
         llrp_factory = self._llrp_factory = LLRPClientFactory(
             antennas=antennas,
             report_every_n_tags=n_tags_per_report,
             modulation="WISP5",
             start_inventory=True
         )
-        # Previous seen EPC data
+        ## Previous seen EPC data
         self._prev_epcs = {}
-        # WTP connections
+        ## WTP connections
         self._connections = {}
-        # Reactor
+        ## Twisted reactor
         self._reactor = reactor
-        # AccessSpec deferreds
+        ## AccessSpec deferreds
         self._access_spec_deferreds = {}
-        # Add tag report callback
+        ## Add tag report callback
         llrp_factory.addTagReportCallback(self._handle_tag_report)
-    def start(self, server, port=LLRP_PORT, reactor=inet_reactor):
-        """
-        Start the WTP server.
+    def start(self, server, port=LLRP_PORT):
+        """!
+        @brief Start the WTP server.
 
-        :param server: Reader
-        :param port: Reader port
+        @param server Reader IP or domain name.
+        @param port Reader port.
         """
         # Connect to reader
         self._reactor.connectTCP(server, port, self._llrp_factory)
         # Run reactor
         self._reactor.run()
     def stop(self):
-        """
-        Stop the WTP server.
+        """!
+        @brief Stop the WTP server.
         """
         self._reactor.stop()
     def _handle_tag_report(self, llrp_msg):
-        """
-        Handle LLRP tag report from reader.
+        """!
+        @brief Handle LLRP tag report from reader.
 
-        :param llrp_msg: LLRP tag report message
+        @param llrp_msg LLRP message.
         """
         reports = llrp_msg.msgdict["RO_ACCESS_REPORT"]["TagReportData"]
         for report in reports:
@@ -104,11 +113,11 @@ class WTPServer(EventTarget):
                     stream = ChecksumStream(read_data)
                     self._handle_packets(stream, wisp_id)
     def _handle_packets(self, stream, wisp_id):
-        """
-        Handle WTP packets.
+        """!
+        @brief Handle WTP packets.
 
-        :param stream: Data stream containing WTP packets
-        :param wisp_id: WISP ID
+        @param stream Data stream containing WTP packets.
+        @param wisp_id WISP ID.
         """
         # Get WTP connection
         connection = self._connections.get(wisp_id)
@@ -144,11 +153,12 @@ class WTPServer(EventTarget):
                     if connection.uplink_state==consts.WTP_STATE_CLOSED and connection.downlink_state==consts.WTP_STATE_CLOSED:
                         del self._connections[wisp_id]
     def _send_access_spec(self, wisp_id, opspecs):
-        """
-        Send AccessSpec to WISP.
+        """!
+        @brief Send AccessSpec to WISP.
 
-        :param wisp_id: WISP ID
-        :param opspecs: OpSpecs to send
+        @param wisp_id WISP ID.
+        @param opspecs OpSpecs to send.
+        @throws WTPError If there are ongoing AccessSpec for current WISP ID.
         """
         # Ongoing AccessSpec for current WISP ID
         if wisp_id in self._access_spec_deferreds:

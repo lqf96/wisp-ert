@@ -3,7 +3,7 @@ import logging
 
 from wtp.constants import WTP_OPSPEC_MIN, WTP_OPSPEC_MAX
 
-# Module logger
+## Module logger
 _logger = logging.getLogger(__name__)
 # Logger level
 _logger.setLevel(logging.DEBUG)
@@ -11,34 +11,44 @@ _logger.setLevel(logging.DEBUG)
 # TODO: More sophisticated OpSpec size control
 # TODO: Current implementation is naive and is demo only
 class OpSpecSizeControl(object):
-    """ A demo OpSpec size control. """
+    """!
+    @brief Demo OpSpec size control class.
+    """
     def __init__(self, read_size, write_size):
-        # Desired size of Read and BlockWrite OpSpec
+        """!
+        @brief Demo OpSpec size control constructor.
+
+        @param read_size Initial desired Read OpSpec size.
+        @param write_size Initial desired BlockWrite OpSpec size.
+        """
+        ## Desired Read OpSpec size
         self.read_size = read_size
+        ## Desired BlockWrite OpSpec size
         self.write_size = write_size
-        # Sizes of pending Read and Write/BlockWrite OpSpec
+        ## Sizes of pending Read OpSpec size
         self._pending_reads = []
+        ## Sizes of pending BlockWrite OpSpec size
         self._pending_writes = []
     def add_read(self, size):
-        """
-        Add size of a new Read OpSpec.
+        """!
+        @brief Add size of a new Read OpSpec.
 
-        :param size: Size of the Read OpSpec
+        @param size Size of the Read OpSpec.
         """
         self._pending_reads.append(size)
     def add_write(self, size):
-        """
-        Add size of a new BlockWrite OpSpec.
+        """!
+        @brief Add size of a new BlockWrite OpSpec.
 
-        :param size: Size of the BlockWrite OpSpec
+        @param size Size of the BlockWrite OpSpec.
         """
         self._pending_writes.append(size)
     def report_read_result(self, succeeded, actual_size):
-        """
-        Report Read OpSpec result to OpSpec size control.
+        """!
+        @brief Report Read OpSpec result to OpSpec size control.
 
-        :param succeeded: Whether the Read operation succeeded or not
-        :param actual_size: Actual Read size
+        @param succeeded Whether the Read operation succeeded or not.
+        @param actual_size Actual Read size.
         """
         # Pop original Read size
         read_size = self._pending_reads.pop(0)
@@ -56,11 +66,11 @@ class OpSpecSizeControl(object):
             _logger.debug("Read size decreased by 2; currently %d", self.read_size)
             self.read_size -= 2
     def report_write_result(self, succeeded, actual_size):
-        """
-        Report BlockWrite result to OpSpec size control.
+        """!
+        @brief Report BlockWrite result to OpSpec size control.
 
-        :param succeeded: Whether the BlockWrite operation succeeded or not
-        :param actual_size: Actual BlockWrite size
+        @param succeeded Whether the BlockWrite operation succeeded or not.
+        @param actual_size Actual BlockWrite size.
         """
         # Pop original BlockWrite size
         blockwrite_size = self._pending_writes.pop(0)

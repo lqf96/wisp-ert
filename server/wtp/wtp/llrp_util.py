@@ -6,12 +6,12 @@ import wtp.constants as consts
 from wtp.error import WTPError
 
 def read_opspec(data_size, opspec_id=0):
-    """
-    Create a LLRP Read OpSpec.
+    """!
+    @brief Create a LLRP Read OpSpec.
 
-    :param data_size: Size of data to read
-    :param opspec_id: OpSpec ID
-    :returns: LLRP Read OpSpec
+    @param data_size Size of data to read.
+    @param opspec_id OpSpec ID.
+    @return LLRP Read OpSpec.
     """
     # Data size must be multiple of 2
     n_words, remainder = divmod(data_size, 2)
@@ -32,13 +32,14 @@ def read_opspec(data_size, opspec_id=0):
     }
 
 def write_opspec(data, opspec_id=0):
-    """
-    Create a LLRP Write or BlockWrite OpSpec.
+    """!
+    @brief Create a LLRP Write or BlockWrite OpSpec.
+
     (A 1-byte data length will be prepended before data)
 
-    :param data: Data to write
-    :param opspec_id: OpSpec ID
-    :returns: LLRP Write or BlockWrite OpSpec
+    @param data Data to write.
+    @param opspec_id OpSpec ID.
+    @return LLRP Write or BlockWrite OpSpec.
     """
     # Convert data to byte array
     data = bytearray(data)
@@ -71,11 +72,12 @@ def write_opspec(data, opspec_id=0):
     }
 
 def wisp_target_info(wisp_id, wisp_class=consts.RFID_WISP_CLASS):
-    """
-    Generate LLRP RFID target information from WISP ID.
+    """!
+    @brief Generate LLRP RFID target information from WISP ID.
 
-    :param wisp_id 16-bit WISP ID
-    :returns: LLRP RFID target information
+    @param wisp_id 16-bit WISP ID.
+    @param wisp_class WISP RFID class.
+    @return LLRP RFID target information.
     """
     # Tag data mask format
     tag_mask_fmt = "<BB"
@@ -99,12 +101,12 @@ def wisp_target_info(wisp_id, wisp_class=consts.RFID_WISP_CLASS):
     }
 
 def access_stop_param(trigger_type=1, count=1):
-    """
-    Generate AccessSpec stop parameter.
+    """!
+    @brief Generate AccessSpec stop parameter.
 
-    :param trigger_type: Trigger type
-    :param count: AccessSpec result count
-    :returns: AccessSpec stop parameter
+    @param trigger_type Trigger type.
+    @param count AccessSpec result count.
+    @return AccessSpec stop parameter.
     """
     return {
         # Trigger type

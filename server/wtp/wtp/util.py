@@ -10,17 +10,22 @@ from wtp.error import WTPError
 from wtp.constants import WTP_ERR_INVALID_CHECKSUM
 
 class EventTarget(object):
-    """ Event target mix-in class. """
+    """!
+    @brief Event target mix-in class.
+    """
     def __init__(self):
-        # Event handlers
+        """!
+        @brief Event target mix-in constructor.
+        """
+        ## All event handlers
         self._all_handlers = {}
     def on(self, event, handler=None):
-        """
-        Add an event handler.
+        """!
+        @brief Add an event handler.
 
-        :param event: Event name
-        :param handler: Event handler function
-        :returns: Event handler
+        @param event Event name.
+        @param handler Event handler function.
+        @return Event handler function.
         """
         # Used as decorator
         if not handler:
@@ -32,11 +37,11 @@ class EventTarget(object):
         # Return handler function
         return handler
     def off(self, event, handler):
-        """
-        Remove an event handler.
+        """!
+        @brief Remove an event handler.
 
-        :param event: Event name
-        :param handler: Event handler function
+        @param event Event name.
+        @param handler Event handler function.
         """
         # Get specific event handlers
         event_handlers = self._all_handlers.get(event)
@@ -44,11 +49,11 @@ class EventTarget(object):
         if event_handlers:
             event_handlers.remove(handler)
     def trigger(self, event, result=None):
-        """
-        Trigger an event.
+        """!
+        @brief Trigger an event.
 
-        :param event: Event name
-        :param result: Event result
+        @param event Event name.
+        @param result Event result.
         """
         # Get specific event handlers
         event_handlers = self._all_handlers.get(event)
@@ -58,13 +63,16 @@ class EventTarget(object):
                 handler(result)
 
 class DataStreamMixin(object):
-    """ Byte stream mix-in that can read or write basic Python values directly. """
+    """!
+    @brief Byte stream mix-in for reading and writing Python values.
+    """
     def read_data(self, fmt, endian="<"):
-        """
-        Read binary data from stream with given format.
+        """!
+        @brief Read binary data from stream with given format.
 
-        :param fmt: Binary data format
-        :returns: Read data
+        @param fmt Binary data format.
+        @param endian Endianness of data to read.
+        @return (A tuple of) read data.
         """
         # Read format
         read_fmt = endian+fmt
@@ -80,10 +88,13 @@ class DataStreamMixin(object):
         else:
             return result
     def write_data(self, fmt, *args, **kwargs):
-        """
-        Write binary data to stream with given format.
+        """!
+        @brief Write binary data to stream with given format.
 
-        :param fmt: Binary data format
+        @param fmt Binary data format.
+        @param args Data to write.
+        @param kwargs Options for writing data\n
+            endian: Endianness of data to write.
         """
         # Endianness
         endian = kwargs.pop("endian", "<")
@@ -91,24 +102,31 @@ class DataStreamMixin(object):
         self.write(struct.pack(endian+fmt, *args))
 
 class ChecksumStream(BytesIO, DataStreamMixin):
-    """ Data stream with checksum functionality. """
+    """!
+    @brief Byte data stream with checksum functionality.
+    """
     def __init__(self, *args, **kwargs):
-        # Checksum function
+        """!
+        @brief Checksum stream constructor.
+        """
+        ## Checksum function
         self._checksum_func = kwargs.pop("checksum_func", None)
-        # Checksum data type
+        ## Checksum data type
         self._checksum_type = kwargs.pop("checksum_type", "<B")
-        # Begin checksum position
+        ## Begin checksum position
         self._begin_pos = 0
         # Initialize base class
         super(ChecksumStream, self).__init__(*args, **kwargs)
     def begin_checksum(self):
-        """
-        Begin checksum calculation.
+        """!
+        @brief Begin checksum calculation.
         """
         self._begin_pos = self.tell()
     def validate_checksum(self):
-        """
-        Validate checksum.
+        """!
+        @brief Validate checksum.
+
+        @throws WTPError if checksum validation failed.
         """
         end_pos = self.tell()
         # Calculate checksum
@@ -123,8 +141,8 @@ class ChecksumStream(BytesIO, DataStreamMixin):
         if read_checksum!=calc_checksum:
             raise WTPError(WTP_ERR_INVALID_CHECKSUM)
     def write_checksum(self):
-        """
-        Write checksum to stream.
+        """!
+        @brief Write checksum to stream.
         """
         end_pos = self.tell()
         # Calculate checksum
@@ -135,53 +153,11 @@ class ChecksumStream(BytesIO, DataStreamMixin):
         # Write checksum to stream
         self.write(struct.pack(self._checksum_type, checksum))
 
-class BitStream(DataStreamMixin):
-    """ Data stream that supports reading or writing bits to stream. """
-    def __init__(self):
-        # TODO: Bit stream
-        pass
-    def read(self, size):
-        """
-        Read data from bit stream.
-
-        :param size: Size of data to read
-        """
-        return self.read_bits(size*8)
-    def read_bits(self, n_bits):
-        """
-        Read bits from bit stream.
-
-        :param n_bits: Number of bits to read
-        """
-        # TODO: Read bit stream
-        pass
-    def write(self, data):
-        """
-        Write data to bit stream.
-
-        :param data: Data to write
-        """
-        self.write_bits(data, len(data)*8)
-    def write_bits(self, data, n_bits):
-        """
-        Write bits to bit stream.
-
-        :param data: Data to write
-        :param n_bits: Number of bits to write
-        """
-        # TODO: Write bit stream
-        pass
-    def getvalue(self):
-        """
-        Retrieve the entire content of the bit stream.
-        """
-        return bytes(self._buffer)
-
 def xor_checksum(buf):
-    """
-    Xor checksum function.
+    """!
+    @brief Xor checksum function.
 
-    :param buf: Buffer to calculate checksum
+    @param buf Buffer to calculate checksum.
     """
     # Convert buffer to byte array
     buf = bytearray(buf)
@@ -192,28 +168,38 @@ def xor_checksum(buf):
     return checksum
 
 def _check_radix(x, y):
-    """
-    Check the radix of two cyclic integers or ranges.
+    """!
+    @brief Check the radix of two cyclic integers or ranges.
 
-    :param x, y: Cyclic integer or range
-    :raises: ValueError if radix of x and y mismatch
+    @param x Cyclic integer or range.
+    @param y Cyclic integer or range.
+    @throws ValueError if radix of x and y mismatch.
     """
     if x._radix!=y._radix:
         raise ValueError("Radix mismatch.")
 
 @functools.total_ordering
 class CyclicInt(object):
-    """ Cyclic integer type. """
+    """!
+    @brief Cyclic integer type.
+    """
     def __init__(self, value, radix):
-        # Value
+        """!
+        @brief Cyclic integer type constructor.
+
+        @param value Value of the cyclic integer.
+        @param radix Radix of the cyclic integer.
+        """
+        ## Value
         self._value = value%radix
-        # Radix
+        ## Radix
         self._radix = radix
     def __eq__(self, other):
-        """
-        Compare equality of cyclic integer with another value.
+        """!
+        @brief Compare equality of cyclic integer with another value.
 
-        :param other: Other value
+        @param other Other value.
+        @return Whether two cyclic integer is equal or not.
         """
         # Cyclic integer
         if isinstance(other, CyclicInt):
@@ -223,6 +209,14 @@ class CyclicInt(object):
         else:
             return self._value==int(other)
     def __lt__(self, other):
+        """!
+        @brief Compare if a cyclic integer is smaller than another value.
+
+        You should enter a zero context before comparing two cyclic integers.
+
+        @param other Other value.
+        @return Whether this cyclic integer is smaller than the other value.
+        """
         # Cyclic integer
         if isinstance(other, CyclicInt):
             _check_radix(self, other)
@@ -237,6 +231,14 @@ class CyclicInt(object):
         else:
             return self._value<int(other)
     def __gt__(self, other):
+        """!
+        @brief Compare if a cyclic integer is bigger than another value.
+
+        You should enter a zero context before comparing two cyclic integers.
+
+        @param other Other value.
+        @return Whether this cyclic integer is bigger than the other value.
+        """
         # Cyclic integer
         if isinstance(other, CyclicInt):
             _check_radix(self, other)
@@ -251,10 +253,11 @@ class CyclicInt(object):
         else:
             return self._value>int(other)
     def __add__(self, other):
-        """
-        Add cyclic integer with another value.
+        """!
+        @brief Add cyclic integer with another value.
 
-        :param other: Other value
+        @param other Other value.
+        @return A cyclic sum of the two values.
         """
         # For cyclic integer, check its radix
         if isinstance(other, CyclicInt):
@@ -262,18 +265,21 @@ class CyclicInt(object):
         # Return new cyclic integer
         return CyclicInt(self._value+int(other), self._radix)
     def __radd__(self, other):
-        """
-        Add cyclic integer with another value.
+        """!
+        @brief Add cyclic integer with another value.
+
         (Proxied to self.__add__)
 
-        :param other: Other value
+        @param other Other value.
+        @return A cyclic sum of the two values.
         """
         return self.__add__(other)
     def __sub__(self, other):
-        """
-        Subtract a value from self.
+        """!
+        @brief Subtract a value from self.
 
-        :param other: Other value
+        @param other Other value
+        @return A cyclic difference of the two values.
         """
         # For cyclic integer, check its radix
         if isinstance(other, CyclicInt):
@@ -281,33 +287,42 @@ class CyclicInt(object):
         # Return new cyclic integer
         return CyclicInt(self._value-int(other), self._radix)
     def __neg__(self):
-        """
-        Get supplementary cyclic integer.
+        """!
+        @brief Get supplementary cyclic integer.
+
+        @return Supplementary cyclic integer.
         """
         return CyclicInt(-self._value, self._radix)
     def __int__(self):
-        """
-        Convert cyclic integer to built-in integer.
+        """!
+        @brief Convert a cyclic integer to built-in integer.
+
+        @return Corresponding Python integer.
         """
         return self._value
     def __index__(self):
-        """
-        Convert cyclic integer to collection index.
+        """!
+        @brief Convert cyclic integer to collection index.
+
         (Proxied to self.__int__)
+
+        @return Corresponding Python integer.
         """
         return self.__int__()
     def __repr__(self):
-        """
-        Representation of cyclic integer.
+        """!
+        @brief Representation of cyclic integer.
+
+        @return A readable representation of the cyclic integer.
         """
         return "CyclicInt(%d, %d)" % (self._value, self._radix)
     @classmethod
     def _zero_ctx(cls):
-        """
-        Get current zero point context.
+        """!
+        @brief Get current zero point context.
 
-        :returns: Current zero point context
-        :raises: Exception if not in a zero point context
+        @return Current zero point context.
+        @throws Exception if not in a zero point context.
         """
         if cls._zero_ctx_stack:
             return cls._zero_ctx_stack[-1]
@@ -316,8 +331,10 @@ class CyclicInt(object):
             raise Exception("Not in a zero point context.")
     @contextmanager
     def as_zero(self):
-        """
-        Enter a context with this cyclic integer as zero point.
+        """!
+        @brief Enter a context with this cyclic integer as zero point.
+
+        (The old zero context will be saved in a zero context stack)
         """
         # Add to contexts stack
         self._zero_ctx_stack.append(self)
@@ -325,12 +342,22 @@ class CyclicInt(object):
         yield
         # Remove from stack
         self._zero_ctx_stack.pop()
-    # Zero point contexts stack
+    ## Zero point contexts stack
     _zero_ctx_stack = []
 
 class CyclicRange(object):
-    """ Cyclic range type. """
+    """!
+    @brief Cyclic range type.
+    """
     def __init__(self, x, radix, y=None, size=None):
+        """!
+        @brief Cyclic range type constructor.
+
+        @param x Begin of the range.
+        @param radix Radix of the cyclic range.
+        @param y End of the range.
+        @param size Size of the range.
+        """
         # Range end
         if y==None and size==None:
             raise ValueError("Either y or size must be given to construct cyclic range.")
@@ -341,11 +368,11 @@ class CyclicRange(object):
         # Radix
         self._radix = radix
     def __eq__(self, other):
-        """
-        Check if other value equals with this cyclic range.
+        """!
+        @brief Check if other value equals with this cyclic range.
 
-        :param other: Other value
-        :returns: Whether two values equal or not
+        @param other Other value.
+        @return Whether two values equal or not.
         """
         if isinstance(other, CyclicRange):
             _check_radix(self, other)
@@ -353,10 +380,11 @@ class CyclicRange(object):
         else:
             return False
     def __contains__(self, other):
-        """
-        Check if given value, cyclic integer or cyclic range is within this cyclic range.
+        """!
+        @brief Check if given value, cyclic integer or cyclic range is within this cyclic range.
 
-        :param other: Other value
+        @param other Other value.
+        @return Whether the other value is in this cyclic range.
         """
         # Cyclic range and cyclic integer
         if isinstance(other, (CyclicRange, CyclicInt)):
@@ -380,11 +408,13 @@ class CyclicRange(object):
             pass
 
 def force_print_exc(func):
-    """
-    Force printing traceback when exception is thrown.
+    """!
+    @brief Force printing traceback when exception is thrown.
+
     (Used for debugging code inside Twisted deferred object)
 
-    :param func: Function to wrap
+    @param func Function to wrap.
+    @return Wrapper function.
     """
     @functools.wraps(func)
     def wrapper(*args, **kwargs):

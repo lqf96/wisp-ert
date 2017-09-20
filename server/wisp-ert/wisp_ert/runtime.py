@@ -8,46 +8,51 @@ from wtp import WTPServer
 
 from wisp_ert.util import not_implemented
 
-# Module logger
+## Module logger
 _logger = logging.getLogger(__name__)
 # Logger level
 _logger.setLevel(logging.DEBUG)
 
 class Service(ABC):
-    """ The WISP extended runtime service class. """
+    """!
+    @brief The WISP extended runtime service base class.
+    """
     @abstractproperty
     def constants(self):
-        """
-        Get C constants provided by this service.
+        """!
+        @brief Get C constants provided by this service.
 
-        :returns: A list of constants and their u-RPC low-level types.
+        @return A list of constants and their u-RPC low-level types.
         """
         not_implemented()
     @abstractproperty
     def functions(self):
-        """
-        Get C functions provided by this service.
+        """!
+        @brief Get C functions provided by this service.
 
-        :returns: A mapping from function names to functions
+        @return A mapping from function names to functions
         """
         not_implemented()
 
 class Runtime(object):
-    """ The WISP extended runtime class. """
+    """!
+    @brief The WISP extended runtime class.
+    """
     def __init__(self, antennas=[1], n_tags_per_report=5, **kwargs):
-        """
-        Runtime constructor.
+        """!
+        @brief The WISP extended runtime constructor.
 
-        :param antennas: Antennas to be enabled
-        :param n_tags_per_report: Report every N tags
+        @param antennas Antennas to be enabled.
+        @param n_tags_per_report Number of tags per tag report.
+        @param kwargs Other arguments.
         """
-        # Services
+        ## Services
         self._services = {}
-        # Services factory
+        ## Services factory
         self._services_factory = {}
-        # WTP connection to services mapping
+        ## WTP connection to services mapping
         self._clients = {}
-        # WTP endpoint
+        ## WTP endpoint
         wtp_ep = self._wtp_ep = WTPServer(
             antennas=antennas,
             n_tags_per_report=n_tags_per_report
@@ -55,14 +60,13 @@ class Runtime(object):
         # Add connect event handler
         wtp_ep.on("connect", self._handle_new_client)
     def _handle_new_client(self, connection):
-        """
-        Handle new WISP client.
+        """!
+        @brief Handle new WISP client.
 
-        :param connection: New WTP connection
+        @param connection New WTP connection.
         """
         _logger.debug("New WISP ERT client: #%d", connection.wisp_id)
         # Create u-RPC endpoint for new client
-        # TODO: Remove u-RPC send
         rpc_ep = URPC(
             send_callback=connection.send
         )
@@ -90,11 +94,12 @@ class Runtime(object):
         wtp_recv_cb = functools.partial(Runtime._wtp_recv_cb, self, connection)
         connection.recv().addCallback(wtp_recv_cb)
     def _service_constants(self, connection, name):
-        """
-        Get service C constants by service name.
+        """!
+        @brief Get service C constants by service name.
 
-        :param connection: WISP client WTP connection
-        :param name: Service name
+        @param connection WTP connection.
+        @param name Service name.
+        @return Respective service C constants in binary format.
         """
         # Get service constants
         service = self._services[connection][name]
@@ -107,11 +112,11 @@ class Runtime(object):
         # Pack constants into binary formats
         return struct.pack(consts_repr, *consts_list)
     def _wtp_recv_cb(self, connection, data):
-        """
-        WTP receive callback.
+        """!
+        @brief WTP on message received callback.
 
-        :param connection: WTP connection
-        :param data: Received data
+        @param connection WTP connection.
+        @param data Received data.
         """
         # Call u-RPC endpoint
         rpc_ep = self._services[connection]["_rpc"]
@@ -120,30 +125,30 @@ class Runtime(object):
         wtp_recv_cb = functools.partial(Runtime._wtp_recv_cb, self, connection)
         connection.recv().addCallback(wtp_recv_cb)
     def add_service(self, name, factory, *args, **kwargs):
-        """
-        Add a service class to runtime.
+        """!
+        @brief Add a service class to runtime.
 
-        :param name: Name of the service
-        :param factory: Service instance factory
-        :param args: Arguments to be passed to service factory
-        :param kwargs: Keyword arguments to be passed to service factory
+        @param name Name of the service.
+        @param factory Service instance factory.
+        @param args Arguments to be passed to service factory.
+        @param kwargs Keyword arguments to be passed to service factory.
         """
         factory = functools.partial(factory, *args, **kwargs)
         # Add to runtime services factories
         self._services_factory[name] = factory
     def start(self, server, port):
-        """
-        Start WISP extended runtime.
+        """!
+        @brief Start WISP extended runtime.
 
-        :param server: LLRP reader IP or domain name
-        :param port: LLRP reader port
+        @param server LLRP reader IP or domain name.
+        @param port LLRP reader port.
         """
         self._wtp_ep.start(
             server=server,
             port=port
         )
     def stop(self):
-        """
-        Stop WISP extended runtime.
+        """!
+        @brief Stop WISP extended runtime.
         """
         self._wtp_ep.stop()

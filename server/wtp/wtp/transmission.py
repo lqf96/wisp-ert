@@ -7,50 +7,65 @@ from twisted.internet.defer import Deferred
 import wtp.constants as consts
 from wtp.util import CyclicInt, CyclicRange, ChecksumStream
 
-# Module logger
+## Module logger
 _logger = logging.getLogger(__name__)
 # Logger level
 _logger.setLevel(logging.DEBUG)
 
-# Transmit fragment type
+## Transmit fragment type
 TxFragment = recordclass("TxFragment", ["seq_num", "msg_size", "data", "d", "need_send"])
 
 class SlidingWindowTxControl(object):
-    """ Sliding window-based transmit control class. """
+    """!
+    @brief Sliding window-based transmit control class.
+    """
     def __init__(self, reactor, write_size, window_size, checksum_func,
         checksum_type, timeout, request_access_spec):
-        # Write OpSpec data size
+        """!
+        @brief Sliding windw-based transmit control constructor.
+
+        @param reactor Twisted reactor.
+        @param write_size Maximum BlockWrite size.
+        @param window_size Sliding window size.
+        @param checksum_func Checksum function.
+        @param checksum_type Checksum data type.
+        @param timeout Fragment timeout.
+        @param request_access_spec Request AccessSpec function.
+        """
+        ## Write OpSpec data size
         self.write_size = write_size
-        # Sliding window size
+        ## Sliding window size
         self.window_size = window_size
-        # Sending data timeout
+        ## Sending data timeout
         self.timeout = timeout
-        # Request sending AccessSpec function
+        ## Request sending AccessSpec function
         self.request_access_spec = request_access_spec
-        # Checksum function and type
+        ## Checksum function
         self.checksum_func = checksum_func
+        ## Checksum data type
         self.checksum_type = checksum_type
-        # Reactor
+        ## Twisted reactor
         self._reactor = reactor
-        # Sequence number
+        ## Sequence number
         self._seq_num = CyclicInt(0, consts.WTP_SEQ_MAX)
-        # Pending packets
+        ## Pending packets
         self._packets = []
-        # Pending messages
+        ## Pending messages
         self._messages = []
-        # Begin position and fragmented part size of next message
+        ## Begin sequence number of next message
         self._msg_begin = CyclicInt(0, consts.WTP_SEQ_MAX)
+        ## Fragmented size of next message
         self._msg_fragmented = 0
-        # Sequence number of message ends
+        ## Sequence numbers of message ends
         self._msg_ends = []
-        # Sending data fragments
+        ## Sending data fragments
         self._fragments = []
     def _make_fragment(self, avail_size):
-        """
-        Make new data fragment with given available size.
+        """!
+        @brief Make new data fragment with given available size.
 
-        :param avail_size: Size of space available.
-        :returns: Transmit data fragment, or None if no fragment is available
+        @param avail_size Size of space available.
+        @return Transmit data fragment, or None if no fragment is available.
         """
         # No message to make fragment from
         messages = self._messages
@@ -94,10 +109,11 @@ class SlidingWindowTxControl(object):
             need_send=False
         )
     def _handle_packet_timeout(self, fragment, *args):
-        """
-        Handle data packet timeout.
+        """!
+        @brief Handle data packet timeout.
 
-        :param fragment: Timeout data fragment
+        @param fragment Timeout data fragment.
+        @param args Other arguments (Not used)
         """
         _logger.debug("Scheduling retransmission for seq_num=%d size=%d", fragment.seq_num, len(fragment.data))
         # Set need send flag
@@ -105,24 +121,25 @@ class SlidingWindowTxControl(object):
         # Request sending AccessSpec
         self.request_access_spec()
     def add_msg(self, msg_data):
-        """
-        Add a new message for sending.
+        """!
+        @brief Add a new message for sending.
 
-        :param msg_data: Message data to send
+        @param msg_data Message data to send.
         """
         self._messages.append(msg_data)
     def add_packet(self, packet_data):
-        """
-        Add a new packet for sending.
+        """!
+        @brief Add a new packet for sending.
 
-        :param packet_data: Packet data to send
+        @param packet_data Packet data to send.
         """
         self._packets.append(packet_data)
     def handle_ack(self, seq_num):
-        """
-        Handle acknowledgement.
+        """!
+        @brief Handle acknowledgement.
 
-        :returns: Number of messages sent
+        @param seq_num Acknowledged sequence number.
+        @return Number of messages sent.
         """
         # Acknowledged sequence number
         seq_num = CyclicInt(seq_num, consts.WTP_SEQ_MAX)
@@ -159,8 +176,10 @@ class SlidingWindowTxControl(object):
         self._seq_num = seq_num
         return n_sent_msgs
     def get_write_data(self):
-        """
-        Get Write/BlockWrite OpSpec data.
+        """!
+        @brief Get Write/BlockWrite OpSpec data.
+
+        @return Write/BlockWrite data.
         """
         stream = ChecksumStream(
             checksum_func=self.checksum_func,
@@ -224,32 +243,39 @@ class SlidingWindowTxControl(object):
         # Return send data
         return stream.getvalue()
 
-# Received message information
+## Received message information
 RxMsgInfo = recordclass("RxMsgInfo", ["begin", "size"])
-# Received data fragment
+## Received data fragment
 RxFragment = recordclass("RxFragment", ["seq_num", "data"])
 
 class SlidingWindowRxControl(object):
-    """ Sliding window-based receive control class. """
+    """!
+    @brief Sliding window-based receive control class.
+    """
     def __init__(self, window_size):
-        # Sequence number
+        """!
+        @brief Sliding window-based receive control constructor.
+
+        @param window_size Sliding window size.
+        """
+        ## Sequence number
         self.seq_num = CyclicInt(0, consts.WTP_SEQ_MAX)
-        # Sliding window size
+        ## Sliding window size
         self.window_size = window_size
-        # Acknowledged next message data
+        ## Acknowledged next message data
         self._msg_data = bytearray()
-        # Non-acknowledged data fragments
+        ## Non-acknowledged data fragments
         self._fragments = []
-        # Message begin sequence number and size
+        ## Message begin sequence number and size
         self._msg_info = []
     def handle_packet(self, seq_num, data, new_msg_size=None):
-        """
-        Handle new data packet that arrives on the connection.
+        """!
+        @brief Handle new data packet that arrives on the connection.
 
-        :param seq_num: Packet sequence number
-        :param data: Packet payload data
-        :param new_msg_size: Message size for begin message data packet
-        :returns: Newly received messages
+        @param seq_num Packet sequence number.
+        @param data Packet payload data.
+        @param new_msg_size Message size for begin message data packet.
+        @return Newly received messages.
         """
         # Packet sequence number
         seq_num = CyclicInt(seq_num, consts.WTP_SEQ_MAX)
