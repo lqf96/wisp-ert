@@ -13,5 +13,5 @@ venv2
 *.egg-info
 dist
 
-# C/C++ files
-*.o
+# Generated documents
+.docs
