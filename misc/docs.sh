@@ -11,7 +11,7 @@ before_upload_hook() {
     # Create directory
     mkdir -p "${SOURCE_DIR}"
     # Generate documents
-    #(cd ../client; doxygen)
+    (cd ../client; doxygen)
     (cd ../server; doxygen)
 }
 # After upload hook
