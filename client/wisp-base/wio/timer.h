@@ -2,46 +2,44 @@
 
 #include "defs.h"
 
-//WIO timer type
+/// WIO timer type
 typedef struct wio_timer {
-    //In use flag
+    /// In use flag
     bool flag;
-    //Callback closure data
+    /// Callback closure data
     void* cb_data;
-    //Callback function
+    /// Callback function
     wio_callback_t cb;
 
-    //Trigger time
+    /// Trigger time
     uint32_t _time;
-    //Previous timer
+    /// Previous timer
     struct wio_timer* _prev;
-    //Next timer
+    /// Next timer
     struct wio_timer* _next;
 } wio_timer_t;
 
-//Current time (In microseconds)
+/// Current time (In unit of 20ms)
 extern uint32_t current_time;
-//System timer (Used for polyfilling WISP firmware functions)
-extern wio_timer_t system_timer;
 
 /**
- * Initialize timer
+ * @brief Initialize timer.
  *
- * @param timer Timer instance
- * @return Operation status
+ * @param timer Timer instance.
+ * @return WIO_OK.
  */
 extern wio_status_t wio_timer_init(
     wio_timer_t* timer
 );
 
 /**
- * Set timeout on timer.
+ * @brief Set timeout on timer.
  *
- * @param timer Timer instance
- * @param time Time
- * @param cb_data Callback closure data
- * @param cb Callback function
- * @return Operation status
+ * @param timer Timer instance.
+ * @param time Time.
+ * @param cb_data Callback closure data.
+ * @param cb Callback function.
+ * @return WIO_OK.
  */
 extern wio_status_t wio_set_timeout(
     wio_timer_t* timer,
@@ -51,11 +49,11 @@ extern wio_status_t wio_set_timeout(
 );
 
 /**
- * Wait for timeout.
+ * @brief Wait for timer to time out.
  *
- * @param timer Timer instance
- * @param time Time
- * @return Operation status
+ * @param timer Timer instance.
+ * @param time Time.
+ * @return WIO_OK.
  */
 extern wio_status_t wio_wait4_timeout(
     wio_timer_t* timer,
@@ -63,20 +61,20 @@ extern wio_status_t wio_wait4_timeout(
 );
 
 /**
- * Clear timeout on timer.
+ * @brief Clear timeout on timer.
  *
- * @param timer Timer instance
+ * @param timer Timer instance.
  */
 extern wio_status_t wio_clear_timeout(
     wio_timer_t* timer
 );
 
 /**
- * Initialize WIO timer subsystem.
+ * @brief Initialize WIO timer subsystem.
  */
 extern wio_status_t wio_timer_subsys_init();
 
 /**
- * Timer interrupt callback.
+ * @brief Timer interrupt callback.
  */
 extern void wio_timer_callback();

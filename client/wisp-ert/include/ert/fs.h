@@ -5,13 +5,14 @@
 #include <ert/runtime.h>
 
 /**
- * Open a file.
+ * @brief Open a remote file.
  *
- * @param path File path
- * @param flags Open flags
- * @param mode Open mode
- * @param cb_data Callback closure data
- * @param cb Callback
+ * @param path Remote file path.
+ * @param flags Open flags.
+ * @param mode Open mode.
+ * @param cb_data Callback closure data.
+ * @param cb Callback.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 extern ert_status_t ert_open(
     const char* path,
@@ -22,11 +23,12 @@ extern ert_status_t ert_open(
 );
 
 /**
- * Close a file.
+ * @brief Close a remote file.
  *
- * @param fd File descriptor
- * @param cb_data Callback closure data
- * @param cb Callback
+ * @param fd Remote file descriptor.
+ * @param cb_data Callback closure data.
+ * @param cb Callback.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 extern ert_status_t ert_close(
     int fd,
@@ -35,12 +37,13 @@ extern ert_status_t ert_close(
 );
 
 /**
- * Read data from file.
+ * @brief Read data from remote file.
  *
- * @param fd File descriptor
- * @param size Data size
- * @param cb_data Callback closure data
- * @param cb Callback
+ * @param fd Remote file descriptor.
+ * @param size Data size.
+ * @param cb_data Callback closure data.
+ * @param cb Callback.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 extern ert_status_t ert_read(
     int fd,
@@ -50,13 +53,14 @@ extern ert_status_t ert_read(
 );
 
 /**
- * Write data to file.
+ * @brief Write data to remote file.
  *
- * @param fd File descriptor
- * @param buf Write data
- * @param size Data size
- * @param cb_data Callback closure data
- * @param cb Callback
+ * @param fd Remote file descriptor.
+ * @param buf Data to write.
+ * @param size Size of data to write.
+ * @param cb_data Callback closure data.
+ * @param cb Callback.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 extern ert_status_t ert_write(
     int fd,

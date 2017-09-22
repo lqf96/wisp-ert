@@ -5,55 +5,55 @@
 #include <ert/rpc.h>
 #include <ert/runtime.h>
 
-//WISP ID
+/// WISP ID
 uint16_t ert_wisp_id = 0x5101;
 
-//WTP endpoint
+/// WTP endpoint
 wtp_t* ert_wtp_ep = WIO_INST_PTR(wtp_t);
-//u-RPC endpoint
+/// u-RPC endpoint
 urpc_t* ert_rpc_ep = WIO_INST_PTR(urpc_t);
 
-//Blockwrite data buffer
+/// Blockwrite data buffer
 static uint8_t blockwrite_buffer[_ERT_BW_SIZE] = {0};
-//WISP data
+/// WISP data
 static WISP_dataStructInterface_t wisp_data;
 
-//RFID Read flag
+/// RFID Read flag
 static bool read_flag = false;
-//RFID BlockWrite flag
+/// RFID BlockWrite flag
 static bool blockwrite_flag = false;
 
-//ERT runtime context
+/// ERT runtime context
 static ucontext_t runtime_ctx;
-//ERT user context
+/// ERT user context
 static ucontext_t user_ctx;
 
-//User context status variable
+/// User context status variable
 static ert_status_t* user_status_var;
-//User context result variable
+/// User context result variable
 static void* user_result_var;
-//User context result size
+/// User context result size
 static uint16_t user_result_size;
 
-//EPC update counter
+/// EPC update counter
 static uint8_t epc_update_counter = 0;
 
 /**
- * WISP RFID Read callback.
+ * @brief WISP RFID Read callback.
  */
 static void ert_read_callback(void) {
     read_flag = true;
 }
 
 /**
- * WISP RFID Blockwrite callback.
+ * @brief WISP RFID Blockwrite callback.
  */
 static void ert_blockwrite_callback(void) {
     blockwrite_flag = true;
 }
 
 /**
- * Function that starts ERT user main routine
+ * Function that starts ERT user main routine.
  */
 static WIO_CALLBACK(ert_enter_main) {
     void** rpc_results = (void**)result;

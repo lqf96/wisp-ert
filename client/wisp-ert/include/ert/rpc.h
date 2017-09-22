@@ -4,11 +4,11 @@
 #include <ert/urpc.h>
 
 //=== ERT RPC marcos ===
-//ERT constant helper
+/// ERT constant helper
 #define ERT_CONST(name) (ert_consts_store.name)
 
 //=== ERT constants ===
-//ERT constants structure
+/// ERT filesystem constants structure
 typedef struct __attribute__((packed)) ert_consts {
     //Open flags
     int16_t O_CREAT;
@@ -27,17 +27,17 @@ typedef struct __attribute__((packed)) ert_consts {
     int16_t EINVAL;
 } ert_consts_t;
 
-//ERT constants store
+/// ERT filesystem constants store
 extern ert_consts_t ert_consts_store;
 
 //=== ERT functions definition ===
-//ERT service constants
+/// Get ERT service constants function handle
 static const urpc_func_t ert_func_srv_consts = 0;
-//Open file function handle
+/// Open remote file function handle
 static const urpc_func_t ert_func_open = 1;
-//Close file function handle
+/// Close remote file function handle
 static const urpc_func_t ert_func_close = 2;
-//Read file function handle
+/// Read remote file function handle
 static const urpc_func_t ert_func_read = 3;
-//Write file function handle
+/// Write remote file function handle
 static const urpc_func_t ert_func_write = 4;

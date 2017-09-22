@@ -5,10 +5,11 @@
 wtp_pkt_handler_t wtp_pkt_handlers[];
 
 /**
- * Handle WTP open packet.
+ * @brief Handle WTP open packet.
  *
- * @param self WTP endpoint instance
- * @param buf Packets buffer
+ * @param self WTP endpoint instance.
+ * @param buf Received packets buffer.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 static wtp_status_t wtp_handle_open(
     wtp_t* self,
@@ -35,10 +36,11 @@ static wtp_status_t wtp_handle_open(
 }
 
 /**
- * Handle WTP acknowledgement packet.
+ * @brief Handle WTP acknowledgement packet.
  *
- * @param self WTP endpoint instance
- * @param buf Packets buffer
+ * @param self WTP endpoint instance.
+ * @param buf Received packets buffer.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 static wtp_status_t wtp_handle_ack(
     wtp_t* self,
@@ -87,11 +89,12 @@ static wtp_status_t wtp_handle_ack(
 }
 
 /**
- * Handle WTP message packet.
+ * @brief Handle WTP message packet.
  *
- * @param self WTP endpoint instance
- * @param buf Packets buffer
- * @param begin_msg Is this packet begin of a message
+ * @param self WTP endpoint instance.
+ * @param buf Received packets buffer.
+ * @param begin_msg True for WTP_PKT_BEGIN_MSG and false for WTP_PKT_CONT_MSG.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 static wtp_status_t wtp_handle_msg_packet(
     wtp_t* self,
@@ -178,10 +181,11 @@ static wtp_status_t wtp_handle_msg_packet(
 }
 
 /**
- * Handle WTP begin message packet.
+ * @brief Handle WTP begin message packet.
  *
- * @param self WTP endpoint instance
- * @param buf Packets buffer
+ * @param self WTP endpoint instance.
+ * @param buf Received packets buffer.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 static wtp_status_t wtp_handle_begin_msg(
     wtp_t* self,
@@ -191,10 +195,11 @@ static wtp_status_t wtp_handle_begin_msg(
 }
 
 /**
- * Handle WTP continue message packet.
+ * @brief Handle WTP continue message packet.
  *
- * @param self WTP endpoint instance
- * @param buf Packets buffer
+ * @param self WTP endpoint instance.
+ * @param buf Received packets buffer.
+ * @return Error code if failed, otherwise WIO_OK.
  */
 static wtp_status_t wtp_handle_cont_msg(
     wtp_t* self,
@@ -204,10 +209,10 @@ static wtp_status_t wtp_handle_cont_msg(
 }
 
 /**
- * Handle WTP set parameter message packet.
+ * @brief Handle WTP set parameter message packet.
  *
- * @param self WTP endpoint instance
- * @param buf Packets buffer
+ * @param self WTP endpoint instance.
+ * @param buf Received packets buffer.
  */
 static wtp_status_t wtp_handle_set_param(
     wtp_t* self,
@@ -629,7 +634,7 @@ uint8_t wtp_xor_checksum(
     return checksum;
 }
 
-//WTP packet handlers
+/// WTP packet handlers
 wtp_pkt_handler_t wtp_pkt_handlers[_WTP_PKT_MAX] = {
     NULL, //WTP_PKT_END
     wtp_handle_open, //WTP_PKT_OPEN

@@ -1,5 +1,5 @@
 /**
- * @file timer.c
+ * @file Timing/timer.c
  *
  * Provides hardware and software delay and alarm/scheduling functions
  *

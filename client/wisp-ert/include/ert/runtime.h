@@ -7,50 +7,51 @@
 #include <ucontext.h>
 
 //=== ERT async marcos ===
-//User code await marco
+/// Asynchronously wait for the completion of function.
 #define ERT_AWAIT(status_var, result_type, result_var, func_name, ...) { \
         func_name(__VA_ARGS__, NULL, ert_user_resume); \
         ert_user_suspend(&status_var, sizeof(result_type), &result_var); \
     }
 
 //=== ERT types ===
-//ERT status type
+/// ERT status type
 typedef wio_status_t ert_status_t;
 
 //=== ERT constants ===
-//Blockwrite data buffer size
+/// BlockWrite data buffer size (Marco)
 #define _ERT_BW_SIZE 0x20
+/// BlockWrite data buffer size
 static const uint8_t ERT_BW_SIZE = _ERT_BW_SIZE;
-//EPC size
+/// EPC size
 static const uint8_t ERT_EPC_SIZE = 12;
-//WISP class
+/// WISP class
 static const uint8_t ERT_WISP_CLASS = 0x10;
-//ERT user stack size
+/// ERT user stack size
 static const uint16_t ERT_USER_STACK_SIZE = 200;
 
 //=== ERT error codes ===
-//Error code for failed remote system call
+/// Error code for failed remote system call
 static const uint8_t ERT_ERR_SYS_FAILED = 0x30;
 
 //=== ERT variables ===
-//WTP endpoint
+/// ERT WTP endpoint
 extern wtp_t* ert_wtp_ep;
-//u-RPC endpoint
+/// ERT u-RPC endpoint
 extern urpc_t* ert_rpc_ep;
 
 //=== ERT runtime APIs ===
 /**
- * ERT pre-init hook.
+ * @brief ERT pre-init hook.
  */
 extern void __attribute__((weak)) ert_pre_init();
 
 /**
- * ERT user main routine.
+ * @brief ERT user main routine.
  */
 extern void __attribute__((weak)) ert_main();
 
 /**
- * Suspend execution of user context.
+ * @brief Suspend execution of user context.
  *
  * @param _status_var Pointer to status variable
  * @param result_size Size of result variable
@@ -68,6 +69,6 @@ extern void ert_user_suspend(
 extern WIO_CALLBACK(ert_user_resume);
 
 /**
- * WISP program entry point.
+ * @brief WISP program entry point.
  */
 extern void main(void);

@@ -69,7 +69,7 @@ wio_status_t wio_queue_push(
  */
 wio_status_t wio_queue_pop(
     wio_queue_t* self,
-    void* item
+    void* _item
 ) {
     //Queue is empty
     if (self->size==0)
@@ -78,8 +78,8 @@ wio_status_t wio_queue_pop(
     //Get queue end data
     uint8_t* end_pos = WIO_QUEUE_AT(self, uint8_t, self->end);
     //Copy queue item
-    if (item)
-        memcpy(item, end_pos, self->item_size);
+    if (_item)
+        memcpy(_item, end_pos, self->item_size);
     //Update queue end
     self->end++;
     if (self->end>=self->capacity)

@@ -1,5 +1,5 @@
 
-/** @file		main.c
+/** @file		run-once/main.c
  * 	@brief		Run this routine once for each new WISP. Generates and stores
  * 				a table of random values to use in quickly producing RN16, and
  * 				also generates a unique ID for each WISP.
@@ -11,24 +11,27 @@
 
 
 /**
- * Generate a number of random 16 bit integers
+ * @brief Generate a number of random 16 bit integers
+ *
  * @param RN16Vals pointer to buffer for random output vals
  * @param len number of 16 bit words to generate
  */
-uint8_t genRN16Vals(uint16_t* RN16Vals, int len){
+uint8_t genRN16Vals(uint16_t* RN16Vals, int len) {
   uint8_t 	i;
 
-  for(i=0; i<len; i++) {
-    RN16Vals[i] = RAND_adcRand16();// generate a new RN16 from 16 LSBs
+  for (i=0; i<len; i++) {
+    RN16Vals[i] = RAND_adcRand16(); // generate a new RN16 from 16 LSBs
   }
+
   return TRUE;
 }
 
 /**
- * Generates and stores a table of random numbers into Info Mem segment B/C.
- *  These are used by the WISP as a unique ID and for RN16 generation in Aloha protocol.
+ * @brief Generates and stores a table of random numbers into Info Mem segment B/C.
+ *
+ * These are used by the WISP as a unique ID and for RN16 generation in Aloha protocol.
  */
-void main (void) {
+void main(void) {
 
   uint16_t  RN16Vals[NUM_RN16_2_STORE]; // table of RN16s to store into FLASH for WISP use
 
@@ -51,5 +54,3 @@ void main (void) {
   //Infinity loop
   while (FOREVER);
 }
-
-

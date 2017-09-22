@@ -1,5 +1,5 @@
 /**
- * @file timer.h
+ * @file Timing/timer.h
  *
  * An interface to low-level hardware and software timing and alarm/scheduling features
  *

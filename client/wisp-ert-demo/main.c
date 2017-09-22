@@ -2,6 +2,9 @@
 #include <ert/fs.h>
 #include <ert/runtime.h>
 
+/**
+ * {@inheritDoc}
+ */
 void ert_main() {
     //Status
     ert_status_t status;

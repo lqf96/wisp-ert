@@ -1,11 +1,12 @@
 #include "../Timing/timer.h"
 #include "timer.h"
 
-//Begin and end of pending timer linked list
+/// Begin of timer linked list
 static wio_timer_t* timer_begin = NULL;
+/// End of timer linked list
 static wio_timer_t* timer_end = NULL;
 
-//Current time (In seconds)
+/// Current time (In unit of 20ms)
 uint32_t current_time = 0;
 
 /**

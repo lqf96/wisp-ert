@@ -2,7 +2,7 @@
 
 #include <ert/rpc.h>
 
-//Bad file descriptor
+/// Bad file descriptor
 #define EBADF ERT_CONST(EBADF)
-//Invalid argument
+/// Invalid argument
 #define EINVAL ERT_CONST(EINVAL)

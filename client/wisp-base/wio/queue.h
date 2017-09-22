@@ -2,40 +2,40 @@
 
 #include "defs.h"
 
-//WIO queue member helper marco
+/// WIO queue member helper marco
 #define WIO_QUEUE_AT(queue, type, index) \
     ((type*)(queue->data+index*queue->item_size))
-//WIO queue begin helper marco
+/// WIO queue begin helper marco
 #define WIO_QUEUE_BEGIN(queue, type) \
     WIO_QUEUE_AT(queue, type, ((queue->begin==0)?(queue->capacity-1):(queue->begin-1)))
-//WIO queue end helper marco
+/// WIO queue end helper marco
 #define WIO_QUEUE_END(queue, type) \
     WIO_QUEUE_AT(queue, type, queue->end)
 
-//WIO circular queue type
+/// WIO circular queue type
 typedef struct wio_queue {
-    //Queue size
+    /// Queue size
     uint16_t size;
-    //Queue capacity
+    /// Queue capacity
     uint16_t capacity;
-    //Item size
+    /// Item size
     uint16_t item_size;
 
-    //Queue data
+    /// Queue data
     uint8_t* data;
 
-    //Queue begin
+    /// Queue begin
     uint16_t begin;
-    //Queue end
+    /// Queue end
     uint16_t end;
 } wio_queue_t;
 
 /**
- * Initialize a WIO queue.
+ * @brief Initialize a WIO queue.
  *
- * @param self WIO queue instance
- * @param item_size Queue item size
- * @param capacity Queue capacity
+ * @param self WIO queue instance.
+ * @param item_size Queue item size.
+ * @param capacity Queue capacity.
  */
 wio_status_t wio_queue_init(
     wio_queue_t* self,
@@ -44,19 +44,19 @@ wio_status_t wio_queue_init(
 );
 
 /**
- * Finalize a WIO queue.
+ * @brief Finalize a WIO queue.
  *
- * @param self WIO queue instance
+ * @param self WIO queue instance.
  */
 wio_status_t wio_queue_fini(
     wio_queue_t* self
 );
 
 /**
- * Push an item into the queue.
+ * @brief Push an item into the queue.
  *
- * @param self WIO queue instance
- * @param item Item to be pushed into the queue
+ * @param self WIO queue instance.
+ * @param item Item to be pushed into the queue.
  */
 wio_status_t wio_queue_push(
     wio_queue_t* self,
@@ -64,12 +64,12 @@ wio_status_t wio_queue_push(
 );
 
 /**
- * Pop an item from the queue.
+ * @brief Pop an item from the queue.
  *
- * @param self WIO queue instance
- * @param _item Item to be popped from the queue
+ * @param self WIO queue instance.
+ * @param _item Item to be popped from the queue.
  */
 wio_status_t wio_queue_pop(
     wio_queue_t* self,
-    void* item
+    void* _item
 );

@@ -1,5 +1,5 @@
 /**
- * @file catchall.c
+ * @file run-once/catchall.c
  *
  * @author Aaron Parks
  */
@@ -9,12 +9,12 @@
 
 
 /**
- * This interrupt handler catches otherwise unhandled interrupts, preventing
+ * @brief This interrupt handler catches otherwise unhandled interrupts, preventing
  *  a system reset.
  *
  * Your application may collide with some of these ISRs. Comment out
  *  those which you are using elsewhere, and uncomment those which are not used
- *  elsewhere
+ *  elsewhere.
  */
 #pragma vector=AES256_VECTOR          // ".int30" 0xFFCC AES256
 #pragma vector=RTC_VECTOR             // ".int31" 0xFFCE RTC

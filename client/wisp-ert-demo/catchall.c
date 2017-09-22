@@ -9,11 +9,12 @@
 
 
 /**
- * If interrupt vectors are left unassigned and are called, the CPU will reset.
+ * @brief This interrupt handler catches otherwise unhandled interrupts, preventing
+ *  a system reset.
  *
- * This function catches un-handled interrupts to reduce confusing resets
- * during debugging. If your application handles certain interrupts, comment
- * them out here to solve linker placement errors.
+ * Your application may collide with some of these ISRs. Comment out
+ *  those which you are using elsewhere, and uncomment those which are not used
+ *  elsewhere.
  */
 #pragma vector=AES256_VECTOR          // ".int30" 0xFFCC AES256
 #pragma vector=RTC_VECTOR             // ".int31" 0xFFCE RTC
