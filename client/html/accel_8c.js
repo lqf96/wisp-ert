@@ -1,0 +1,25 @@
+var accel_8c =
+[
+    [ "ACCEL_initialize", "accel_8c.html#ae309f9474aef4b2fb94d356e06c5ce0c", null ],
+    [ "ACCEL_initialize_withoutWait", "accel_8c.html#a4339c6ee1d96bf2a7be5fafd8267e784", null ],
+    [ "ACCEL_range", "accel_8c.html#a64801f376a8de1a36ca0cb316b29fd01", null ],
+    [ "ACCEL_readID", "accel_8c.html#a2229e73207c70eb16d6a713f004af5c3", null ],
+    [ "ACCEL_readStat", "accel_8c.html#af5dfb6fba6a42598552e942f060d9c86", null ],
+    [ "ACCEL_reset", "accel_8c.html#afcf424396dffd1ee6d410ebd10080d44", null ],
+    [ "ACCEL_singleSample", "accel_8c.html#a617d398836948f62a0a32ad6b9ca6edb", null ],
+    [ "ACCEL_singleSample_FIFO", "accel_8c.html#a4f8af6464b3066f1f740b48e0b5c9a77", null ],
+    [ "ACCEL_standby", "accel_8c.html#abc1753cfadb8c96a89646e0d3ebaafd9", null ],
+    [ "ADXL_CONFIG_FIFO_CTL", "accel_8c.html#a3822d6604071eaeb52311b8390fd2b10", null ],
+    [ "ADXL_CONFIG_FIFO_SAMPLE", "accel_8c.html#a4329577e0e566cf78632500d204b71cf", null ],
+    [ "ADXL_CONFIG_FILTER", "accel_8c.html#a39b2ced3483cd30b9c65eff7a19a101a", null ],
+    [ "ADXL_CONFIG_INTERRUPT", "accel_8c.html#afbb726a7c2061433cf787724583a93d2", null ],
+    [ "ADXL_CONFIG_MEAS", "accel_8c.html#a4074b4203bbb5bb492bd0926ae70c0ff", null ],
+    [ "ADXL_CONFIG_RESET", "accel_8c.html#ad6e52dccf82f0c384fc1ff94b291a589", null ],
+    [ "ADXL_CONFIG_STBY", "accel_8c.html#a69fadc28b754f080bc232f13f4f15a20", null ],
+    [ "ADXL_READ_DEVID", "accel_8c.html#a4fee843c3e55c59c93e12195ecfd3c92", null ],
+    [ "ADXL_READ_PARTID", "accel_8c.html#a4b70e1bc97c703f7d233a11ba94373c3", null ],
+    [ "ADXL_READ_XYZ_16BIT", "accel_8c.html#a1096a924c25ebfc992d90a468e869152", null ],
+    [ "ADXL_READ_XYZ_16BIT_FIFO", "accel_8c.html#a27d078d885aae5724c909295a61634c7", null ],
+    [ "ADXL_READ_XYZ_8BIT", "accel_8c.html#a3f206eb1316794bb9957e416e96a667c", null ],
+    [ "ADXL_REAsxD_STATUS", "accel_8c.html#a9bc996c57b4b1e114d36c5ad2aeee711", null ]
+];
