@@ -16,7 +16,7 @@ before_upload_hook
 # Create temporary directory
 _TMP_REPO_DIR="$(mktemp -d)"
 # Clone repository into temporary directory
-git clone "${REPO_URL}" -b "${REPO_BRANCH}" "${_TMP_REPO_DIR}"
+git clone --no-checkout "${REPO_URL}" -b "${REPO_BRANCH}" "${_TMP_REPO_DIR}"
 # Copy all files from source directory to repository
 cp -a "${SOURCE_DIR}"/* "${_TMP_REPO_DIR}"
 
