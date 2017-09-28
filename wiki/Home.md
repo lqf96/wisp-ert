@@ -5,18 +5,21 @@ Welcome to the WISP ERT wiki home!
 (TODO: Update links)
 * Home
 * WISP Firmware
-  - Introduction
-  - WIO API
-* WISP Run Once Project
+  - [Introduction](wiki/WISP-Firmware:-Introduction)
+  - [WIO API](wiki/WISP-Firmware:-WIO-API)
+  - Run Once Project
 * WTP
-  - EPC C1G2 Introduction
-  - Design
-  - Protocol Format
+  - [Getting Started](wiki/WTP:-Getting-Started)
+  - [EPC C1G2 Introduction](wiki/WTP:-EPC-C1G2-Introduction)
+  - [Design](wiki/WTP:-Design)
+  - [Protocol Format](wiki/WTP:-Protocol-Format)
 * [u-RPC](https://github.com/lqf96/u-rpc/wiki)
+  - [Getting Started](https://github.com/lqf96/u-rpc/wiki/Getting-Started)
+  - [Protocol Design](https://github.com/lqf96/u-rpc/wiki/Protocol-Design)
 * WISP ERT
 * WISP ERT Demo
 * [Issues](wiki/Issues)
-* Future Works
+* [Future Works](wiki/Future-Works)
 
 ## Project Structure
 (TODO: Project structure description)
@@ -27,13 +30,14 @@ Welcome to the WISP ERT wiki home!
   - `wisp-ert-demo`
   - `wtp`
 * `deps`
+  - ``
 * `misc`
 * `server`
-  - `sllurp`
-  - `urpc`
+  - `sllurp`: See `deps/sllurp`.
+  - `urpc`: See `deps/urpc`.
   - `wisp-ert`
   - `wtp`
-* `wiki`: WISP ERT wiki documents
+* `wiki`: WISP ERT wiki documents.
 
 ## API Documentation
 The API descriptions are written in Javadoc-like format and the documentation is generated with Doxygen.

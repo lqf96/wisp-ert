@@ -28,9 +28,9 @@ Used to set connection parameters on the remote endpoint.
 ## WTP Parameters
 In WTP some configurations need to be synchronized between two endpoints. These configurations are represented by WTP parameters and can be set on the remote endpoint by sending set parameter packet.
 * `0x00`: Sliding window size  
-(TODO: Parameter introduction)
+(Currently not used) Used for synchronizing sliding window size between the two sides. Any data fragment that falls outside of the window gets dropped.
 * `0x01`: Desired Read size  
-(TODO: Parameter introduction)
+After the server side updates desired Read OpSpec size, it synchronizes this size with the WISP side using this parameter.
 
 ## WTP Packet Formats
 * `0x00`: End of Packets Packet
