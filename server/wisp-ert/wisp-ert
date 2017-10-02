@@ -1,6 +1,6 @@
 #! /usr/bin/env python
 from __future__ import unicode_literals
-import sys, logging
+import sys, logging, os
 from argparse import ArgumentParser
 from sllurp.llrp import LLRP_PORT
 
@@ -37,7 +37,7 @@ if __name__=="__main__":
     options.update(extra_opt_ns)
     # Start runtime
     runtime = Runtime(**options)
-    runtime.add_service("fs", LocalFS, root_dir="/Users/lqf/Playground/wisp-ert")
+    runtime.add_service("fs", LocalFS, root_dir=os.environ["HOME"])
     runtime.start(
         server=options["server"],
         port=options["port"]
