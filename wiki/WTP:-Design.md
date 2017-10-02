@@ -1,5 +1,5 @@
 # WTP: Design
-This article covers the design of the WISP.
+This article covers the design of the WISP Transmission Protocol.
 
 ## Connection Establishment and Termination
 

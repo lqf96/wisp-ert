@@ -56,7 +56,50 @@ wtp_init(
 ```
 
 ## Hook the RFID Loop
-(TODO: Hook the RFID Loop)
+The WTP client library provided three hook functions: `wtp_before_do_rfid()`, [`wtp_load_read_mem()`](https://lqf96.github.io/wisp-ert/client/html/endpoint_8h.html#ae25c83220d517132b0ef6faa65f4ecfe) and [`wtp_handle_blockwrite()`](https://lqf96.github.io/wisp-ert/client/html/endpoint_8h.html#aeb0a5eb248ff26c1d7942a0c347e155b). You need to call these functions when specific RFID event happens:
+
+```c
+//Read and BlockWrite flag
+bool read_flag = false;
+bool blockwrite_flag = false;
+
+//Read callback
+void read_callback(void) {
+    read_flag = true;
+}
+
+//BlockWrite callback
+void blockwrite_callback(void) {
+    blockwrite_flag = true;
+}
+```
+
+```c
+//Register Read and BlockWrite callback
+WISP_registerCallback_READ(read_callback);
+WISP_registerCallback_BLOCKWRITE(blockwrite_callback);
+
+while (true) {
+    //Call "wtp_before_do_rfid" before doing RFID
+    wtp_before_do_rfid(&client);
+
+    //Do RFID
+    WISP_doRFID();
+
+    //Call "wtp_load_read_mem" after RFID Read
+    if (read_flag) {
+        wtp_load_read_mem(&client);
+        read_flag = false;
+    }
+    //Call "wtp_handle_blockwrite" after RFID BlockWrite
+    if (blockwrite_flag) {
+        wtp_handle_blockwrite(&client);
+        blockwrite_flag = false;
+    }
+}
+```
+
+In theory, we can directly call [`wtp_load_read_mem()`](https://lqf96.github.io/wisp-ert/client/html/endpoint_8h.html#ae25c83220d517132b0ef6faa65f4ecfe) inside `read_callback()` and call [`wtp_handle_blockwrite()`](https://lqf96.github.io/wisp-ert/client/html/endpoint_8h.html#aeb0a5eb248ff26c1d7942a0c347e155b) inside `blockwrite_callback()`. But since these two functions aren't optimized and take a long time to run, they can cause the WISP RFID routines to fail, so now we only set up flags inside the Read and BlockWrite callback and call the WTP hook functions outside the WISP RFID routines.
 
 ## Open and Accept Connection
 With the client endpoint we already created, the next step is to connect to the server side. This is done with [`wtp_connect()`](https://lqf96.github.io/wisp-ert/client/html/endpoint_8h.html#a61fef7bc9b6858795e7e67b469ccd94a):

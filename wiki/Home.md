@@ -17,7 +17,8 @@ Welcome to the WISP ERT wiki home!
   - [Getting Started](https://github.com/lqf96/u-rpc/wiki/Getting-Started)
   - [Protocol Design](https://github.com/lqf96/u-rpc/wiki/Protocol-Design)
 * WISP ERT
-* WISP ERT Demo
+  - [Design](wiki/WISP-Extended-Runtime:-Design)
+  - [Demo](wiki/WISP-Extended-Runtime:-Demo)
 * [Issues](wiki/Issues)
 * [Future Works](wiki/Future-Works)
 

@@ -79,12 +79,26 @@ WIO_TRY(wio_read(example_buf, &tmp_u16, 2))
 
 To copy data from one buffer to another, use [`wio_copy()`](https://lqf96.github.io/wisp-ert/client/html/buf_8h.html#aff699efa14ed37fdb1f6baed8f8bd3ea). This is equivalent to reading from the source buffer and then writing to the target buffer.
 
-(TODO: Allocation)
+Beside reading and writing, a WIO buffer can also be used for memory allocation. Function [`wio_alloc()`](https://lqf96.github.io/wisp-ert/client/html/buf_8h.html#ad449c3e55563dbed0da890d035187c28) allocates memory from the WIO buffer and advances the write cursor (`pos_b`). Function [`wio_free()`](https://lqf96.github.io/wisp-ert/client/html/buf_8h.html#a19ead31e3e1c8e68a267b64afd6aade6) releases memory from the WIO buffer and advances the read cursor (`pos_a`).
 
-(TODO: Free)
+```c
+//Allocate buffer
+char* alloc_buf;
+WIO_TRY(wio_alloc(example_buf, 9, &alloc_buf))
+
+//Use the buffer
+scanf("%8s", alloc_buf);
+
+//Release buffer
+WIO_TRY(wio_free(example_buf, 9))
+```
+
+The allocation happens in a circular manner. If the write cursor reachs the end of the buffer and there is insufficient memory for allocation, the remaining memory at the end of the buffer will be skipped, and allocation will happen at the beginning of the buffer. Similarly, the end of the buffer will also be skipped when a corresponding free happends.
 
 ## Timer API
-Type `wio_timer_t` represents a WIO software timer. To initialize it, call [`wio_timer_init()`](https://lqf96.github.io/wisp-ert/client/html/wio_2timer_8c.html#a960735b2d13c97b7a53c3b8b66c3b876):
+Type `wio_timer_t` represents a WIO software timer, which is implemented on top of MSP430 hardware timer using a linked list.
+
+Before using the timer API, call [`wio_timer_subsys_init()`](https://lqf96.github.io/wisp-ert/client/html/wio_2timer_8h.html#aea40eae34fea7b302540ab29ff3ea7dd) at the beginning of your program. To initialize a single timer, call [`wio_timer_init()`](https://lqf96.github.io/wisp-ert/client/html/wio_2timer_8c.html#a960735b2d13c97b7a53c3b8b66c3b876):
 
 ```c
 //Example timer
@@ -94,11 +108,45 @@ wio_timer_t* example_timer = WIO_INST_PTR(wio_timer_t);
 WIO_TRY(wio_timer_init(example_timer));
 ```
 
-(TODO: Set timeout)
+Setting a timeout with corresponding callback can be done with [`wio_set_timeout()`](https://lqf96.github.io/wisp-ert/client/html/wio_2timer_8h.html#a85dea7d26ead0b55646f7a035e231740). The following program toggles WISP's LED light every 1 second:
 
-(TODO: Wait for timeout)
+```c
+//Timer
+wio_timer_t timer;
+//WISP LED state
+bool led_state = false;
 
-(TODO: Clear timeout)
+WIO_CALLBACK(on_timeout) {
+    if (led_state) {
+        BITCLR(PLED1OUT, PIN_LED1);
+        led_state = false;
+    } else {
+        BITSET(PLED1OUT, PIN_LED1);
+        led_state = true;
+    }
+
+    WIO_TRY(wio_set_timeout(&timer, 50, NULL, on_timeout))
+
+    return WIO_OK;
+}
+```
+
+```c
+//Initialize timer API and timer
+WIO_TRY(wio_timer_subsys_init())
+WIO_TRY(wio_timer_init(&timer))
+
+//Kick start the program
+WIO_TRY(wio_set_timeout(&timer, 50, NULL, on_timeout))
+```
+
+Alternatively, you can synchronously wait for the timer to complete using [`wio_wait4_timeout()`](https://lqf96.github.io/wisp-ert/client/html/wio_2timer_8h.html#af59eea3668b93db9c545030f6f56d008). Your program will be blocked during the whole process and the WISP will be put into low power mode.
+
+To clear the timeout on the timer, use [`wio_clear_timeout()`](https://lqf96.github.io/wisp-ert/client/html/wio_2timer_8h.html#a8a882b09b154841f72eca6b83992a631):
+
+```c
+WIO_TRY(wio_clear_timeout(&timer))
+```
 
 ## Queue API
 Type `wio_queue_t` represents a circular queue in the WIO API. To initialize it, call [`wio_queue_init()`](https://lqf96.github.io/wisp-ert/client/html/queue_8h.html#a7d23e8008a226c8451caa9304bbe5d49) with queue capacity and size of each queue item:
@@ -129,9 +177,27 @@ WIO_TRY(wio_queue_pop(num_queue, &tmp))
 assert(tmp==5);
 ```
 
-(TODO: WIO_QUEUE_* Marco)
+To get the pointer to the beginning and the end of the queue, use [`WIO_QUEUE_BEGIN()`](https://lqf96.github.io/wisp-ert/client/html/queue_8h.html#ae8232a8e0759d46dd8e2563e83db7b35) and [`WIO_QUEUE_END()`](https://lqf96.github.io/wisp-ert/client/html/queue_8h.html#ac0dcf3fc103a6c8f3818135833916cbf) marco. To get the pointer to a queue item by index, use [`WIO_QUEUE_AT()`](https://lqf96.github.io/wisp-ert/client/html/queue_8h.html#aa8726b3d5f5abca8b33a3895af571ef5). Do remember to ensure the queue isn't empty and check the validity of the queue item, or you will get unexpected results.
 
-(TODO: Traverse through the queue)
+A typical example of these marcos is the code to traverse through a WIO queue:
+
+```c
+//Index of current item
+uint8_t index = num_queue->end;
+
+for (uint8_t i=0;i<fragments_queue->size;i++) {
+    //Get pointer to queue item
+    uint16_t* _num = WIO_QUEUE_AT(num_queue, uint16_t, index);
+
+    //Do whatever you want with the item
+    //...
+
+    //Move to next item
+    index++;
+    if (index>=num_queue->capacity)
+        index = 0;
+}
+```
 
 Finally, don't forget to release the memory of the queue after using it:
 
