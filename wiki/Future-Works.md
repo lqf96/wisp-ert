@@ -21,3 +21,5 @@ There are two ways to implement encryption on WTP. One is to only encrypt the me
 ## WISP Extended Runtime
 ### Firmware Update
 The WISP Extended Runtime should support OTA firmware update. WISP firmware update has already been done before in [Wisent](https://arxiv.org/pdf/1512.04602.pdf) and [Stork](http://www.es.ewi.tudelft.nl/papers/2017-Aantjes-INFOCOM.pdf).
+
+To implement firmware update feature in WISP ERT, we need to cut down the size of the code and identifie the smallest collection of functions and constants needed to receive the firmware, so that other spaces available on the FRAM can be used to place the new firmware. For the server-side, the WISP ERT library should be able to generate memory map base on the memory availability of the WISP. It should then compile the new firmware with the memory map and transmit it to the WISP.

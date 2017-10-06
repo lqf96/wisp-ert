@@ -1,5 +1,5 @@
 # WISP Firmware: WIO API
-This article introduces the WIO API
+This article introduces the WIO API, a group of utility marcos, types, constants and functions.
 
 ## Types
 * `wio_status_t`: A `uint8_t` representing the status of an operation. `WIO_OK` (or 0) indicates that an operation succeeded, while other values indicate failure.
