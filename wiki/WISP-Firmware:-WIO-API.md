@@ -15,16 +15,39 @@ This article introduces the WIO API
   - `WIO_ERR_EMPTY`: Cannot operate on empty data structures.
 
 ## Helper Marcos
-* `WIO_TRY`: Emulate exception handling in C.
+* `WIO_TRY`: Emulate exception handling in C.  
+It's usage is very similar to the `try!` marco in Rust. The function using the `WIO_TRY` marco must returns `wio_status_t`. If the expression inside `WIO_TRY` returns `WIO_OK`, the program goes on, otherwise it will immediately returns with the error code returned by the expression. For example, `WIO_TRY(some_func())` will expand to:
 
-(TODO: Descriptions & Examples)
-* `WIO_CALLBACK`: Shorthand marco for declaring or defining a WIO callback.
+```c
+{
+    wio_status_t __status;
+    if (__status)
+        return __status;
+}
+```
 
-(TODO: Descriptions)
-* `WIO_INST_PTR`: Create an anonymous variable on stack and returns a pointer to the variable.
+* `WIO_CALLBACK`: Shorthand marco for declaring or defining a WIO callback. The marco can be used for either declaration or implementation. For exmaple, `static WIO_CALLBACK(some_func);` will expand to:
 
-(TODO: Descriptions & Examples)
-* `WIO_RETURN`: Check and return value through pointer parameters.
+```c
+static wio_status_t some_func(void* data, wio_status_t status, void* result);
+```
+
+* `WIO_INST_PTR`: Create an anonymous variable on stack and returns a pointer to the variable. For example, `uint16_t* _x = WIO_INST_PTR();` is equivalent to:
+
+```c
+uint16_t x;
+uint16_t* _x = &x;
+```
+
+* `WIO_RETURN`: Check and return value through pointer parameters. For example, suppose you have an out pointer parameter `uint16_t* ret` and you want to return the result through the parameter, you can write `WIO_RETURN(ret, 8)`, which expands to following code:
+
+```c
+{
+    if (ret)
+        *ret = 8;
+}
+```
+
 * `WIO_MIN`: Get minimal value of two numbers.
 
 ```c

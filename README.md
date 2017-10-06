@@ -6,10 +6,8 @@ The WISP Extended Runtime
 * WISP Firmware
   - [Introduction](https://github.com/lqf96/wisp-ert/wiki/WISP-Firmware:-Introduction)
   - [WIO API](https://github.com/lqf96/wisp-ert/wiki/WISP-Firmware:-WIO-API)
-  - Run Once Project
 * WTP
   - [Getting Started](https://github.com/lqf96/wisp-ert/wiki/WTP:-Getting-Started)
-  - [EPC C1G2 Introduction](https://github.com/lqf96/wisp-ert/wiki/WTP:-EPC-C1G2-Introduction)
   - [Design](https://github.com/lqf96/wisp-ert/wiki/WTP:-Design)
   - [Protocol Format](https://github.com/lqf96/wisp-ert/wiki/WTP:-Protocol-Format)
 * [u-RPC](https://github.com/lqf96/u-rpc/wiki)

@@ -2,15 +2,12 @@
 Welcome to the WISP ERT wiki home!
 
 ## Outline
-(TODO: Update links)
 * Home
 * WISP Firmware
   - [Introduction](wiki/WISP-Firmware:-Introduction)
   - [WIO API](wiki/WISP-Firmware:-WIO-API)
-  - Run Once Project
 * WTP
   - [Getting Started](wiki/WTP:-Getting-Started)
-  - [EPC C1G2 Introduction](wiki/WTP:-EPC-C1G2-Introduction)
   - [Design](wiki/WTP:-Design)
   - [Protocol Format](wiki/WTP:-Protocol-Format)
 * [u-RPC](https://github.com/lqf96/u-rpc/wiki)
@@ -23,21 +20,21 @@ Welcome to the WISP ERT wiki home!
 * [Future Works](wiki/Future-Works)
 
 ## Project Structure
-(TODO: Project structure description)
-* `client`
-  - `run-once`
-  - `wisp-base`
-  - `wisp-ert`
-  - `wisp-ert-demo`
-  - `wtp`
+* `client`: Client-side C code for the WISP
+  - `run-once`: The WISP5 run once project that is used to initialize the random number table used by the WISP5 firmware.
+  - `wisp-base`: Modified WISP5 firmware.
+  - `wisp-ert`: WISP Extended Runtime client-side code.
+  - `wisp-ert-demo`: A simple file operation demo of the WISP Extended Runtime.
+  - `wtp`: WTP client-side code.
 * `deps`
-  - ``
-* `misc`
-* `server`
+  - `sllurp`: A custom [`sllurp`](https://github.com/lqf96/sllurp) fork used by the project.
+  - `urpc`: The (u-RPC)[https://github.com/lqf96/u-rpc] remote procedure call framework.
+* `misc`: Miscellaneous utilties for updating the wiki and the API documents.
+* `server`: Server-side Python code for the computer.
   - `sllurp`: See `deps/sllurp`.
   - `urpc`: See `deps/urpc`.
-  - `wisp-ert`
-  - `wtp`
+  - `wisp-ert`: WISP Extended Runtime server-side code.
+  - `wtp`: WTP server-side code.
 * `wiki`: WISP ERT wiki documents.
 
 ## API Documentation
